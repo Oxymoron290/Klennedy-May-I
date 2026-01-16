@@ -7,33 +7,32 @@ interface Card {
 }
 
 export default class GameScene extends Phaser.Scene {
-  socket!: Socket
-  roomId: string = 'test' // Hardcoded for demo
-  handContainer!: Phaser.GameObjects.Container
-  hand: Card[] = []
+  socket!: Socket;
+  roomId: string = 'test'; // Hardcoded for demo
+  handContainer!: Phaser.GameObjects.Container;
+  hand: Card[] = [];
   handSprites: Map<Phaser.GameObjects.Sprite, Card> = new Map();
-  discardZone!: Phaser.GameObjects.Zone
+  discardZone!: Phaser.GameObjects.Zone;
+  private draggedCardData: Card | null = null;  // New: store card data
+  private placeholder: Phaser.GameObjects.Sprite | null = null;
+  private originalIndex: number = -1;
 
   constructor() {
     super({ key: 'GameScene' })
   }
 
   preload() {
-    // Load atlases - place PNGs + XMLs in ./src/renderer/public/
-    // Rename PNGs to: sheet_cards.png (fronts), sheet_backs.png (backs)
     this.load.atlasXML('cards', '/playingCards.png', '/playingCards.xml')
     this.load.atlasXML('backs', '/playingCardBacks.png', '/playingCardBacks.xml')
   }
 
   create() {
-    // UI Title
     this.add.text(400, 50, 'May I?', {
       fontSize: '32px',
       color: '#fff',
       fontStyle: 'bold'
     }).setOrigin(0.5)
 
-    // Discard Zone (right side, visual rect + zone)
     const discardRect = this.add.rectangle(1100, 450, 84, 114, 0xff0000, 0.3)
       .setOrigin(0.5)
       .setDepth(1);
@@ -46,69 +45,108 @@ export default class GameScene extends Phaser.Scene {
     this.discardZone.on('pointerover', () => discardRect.setFillStyle(0x00ff00, 0.5));
     this.discardZone.on('pointerout', () => discardRect.setFillStyle(0xff0000, 0.3));
 
-    // Hand Container (bottom, scrollable if needed)
     this.handContainer = this.add.container(600, 700).setDepth(10)
     this.handContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, 1200, 200), Phaser.Geom.Rectangle.Contains)
 
-    // Deal sample hand (local shuffle for demo)
-    //this.dealHand()
+    const handDropZone = this.add.zone(600, 700, 1200, 200)
+      .setDropZone()
+      .setInteractive({ cursor: 'pointer' })
+      .setOrigin(0.5);
 
-    // Global drag listeners
+    handDropZone.setInteractive(new Phaser.Geom.Rectangle(-600, -100, 1200, 200), Phaser.Geom.Rectangle.Contains);
+
     this.input.on('dragstart', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Sprite) => {
-      gameObject.setTint(0x00ff00) // Green tint
-      this.children.bringToTop(gameObject.parentContainer!) // Bring hand to top? No, individual
-    })
+      const card = this.handSprites.get(gameObject);
+      if (!card) return;
+
+      this.draggedCardData = card;
+      this.originalIndex = this.hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+      if (this.originalIndex === -1) return;
+
+      gameObject.setAlpha(0.4);
+      gameObject.setTint(0x00ff00);
+      gameObject.setScale(0.65);
+      this.handContainer.bringToTop(gameObject);
+
+      // this.placeholder = this.add.sprite(gameObject.x, gameObject.y, 'cards', gameObject.frame.name)
+      //   .setScale(0.6)
+      //   .setAlpha(0.35)
+      //   .setTint(0xffffff)
+      //   .setDepth(20);
+
+      // this.handContainer.add(this.placeholder);
+
+      this.handSprites.delete(gameObject);
+    });
 
     this.input.on('drag', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Sprite, dragX: number, dragY: number) => {
-      gameObject.x = dragX
-      gameObject.y = dragY
-    })
+      gameObject.x = dragX;
+      gameObject.y = dragY;
+
+      if (this.placeholder) {
+        this.placeholder.x = dragX;
+        this.placeholder.y = dragY;
+      }
+
+      if (this.handContainer && this.handSprites.size > 0) {
+        const localX = pointer.x - this.handContainer.x;
+        const insertIndex = this.getInsertIndexFromLocalX(localX);
+
+        this.updateHandVisualForDrag(insertIndex);
+      }
+    });
 
     this.input.on('dragend', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Sprite) => {
-      gameObject.clearTint()
-    })
+      gameObject.clearTint();
+      gameObject.setAlpha(1);
+      gameObject.setScale(0.6);
+
+      if (this.placeholder) {
+        this.placeholder.destroy();
+        this.placeholder = null;
+      }
+
+      // Restore map entry if not dropped (e.g., drag canceled)
+      if (this.draggedCardData) {
+        this.handSprites.set(gameObject, this.draggedCardData);
+      }
+
+      this.renderHand(this.hand);
+
+      this.draggedCardData = null;
+      this.originalIndex = -1;
+    });
 
     this.input.on('drop', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Sprite, zone: Phaser.GameObjects.Zone) => {
+      if (!this.draggedCardData || this.originalIndex === -1) return;
+
       if (zone === this.discardZone) {
-        // TODO: Socket emit 'discardCard'
-        // Lookup card from sprite map
-        const card = this.handSprites.get(gameObject)
-        if (card) {
-          // Remove from state
-          const index = this.hand.findIndex(c => c.suit === card.suit && c.rank === card.rank)
-          if (index > -1) this.hand.splice(index, 1)
-          
-          console.log('Discarded:', card)
-          
-          // Visual: add to discard pile
-          const discardTop = this.add.sprite(1100, 450, 'cards', gameObject.frame.name)
-            .setScale(0.6)
-            .setDepth(5)
-          
-          gameObject.destroy()
-          this.handSprites.delete(gameObject)  // Clean map
-          
-          this.renderHand(this.hand)
-        }
-      } else {
-        // Snap back to hand
-          this.renderHand(this.hand)
+        this.hand.splice(this.originalIndex, 1);
+
+        gameObject.removeInteractive();
+        this.handContainer.remove(gameObject, true);
+        console.log('Discarded:', this.draggedCardData);
+
+        this.add.sprite(1100, 450, 'cards', gameObject.frame.name)
+          .setScale(0.6)
+          .setDepth(5);
+      } else if (zone === handDropZone) {
+        const dropX = pointer.x - this.handContainer.x;
+        let insertIndex = this.getInsertIndexFromLocalX(dropX);
+        
+        // Remove from original position
+        this.hand.splice(this.originalIndex, 1);
+
+        // No need for the > originalIndex adjustment anymore!
+        // The midpoint comparison handles it naturally
+        this.hand.splice(insertIndex, 0, this.draggedCardData!);
+
+        console.log('Reordered to index:', insertIndex);
       }
-    })
 
-    // Socket for multiplayer (stub - triggers deal on "join")
-    const refan = this.add.text(600, 450, ' Refan Hand ', {
-      fontSize : '24px',
-      color: '#0f0',
-      backgroundColor: '#000',
-      padding: { x: 20, y: 10 }
-    }).setOrigin(0.5).setInteractive({ cursor: 'pointer' })
+      this.renderHand(this.hand);
+    });
 
-    refan.on('pointerdown', () => {
-      this.renderHand(this.hand)
-    })
-
-    // Socket for multiplayer (stub - triggers deal on "join")
     const joinBtn = this.add.text(600, 150, ' Multiplayer ', {
       fontSize : '24px',
       color: '#0f0',
@@ -124,12 +162,10 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive({ cursor: 'pointer' })
 
     joinBtn.on('pointerdown', () => {
-      // TODO: Real socket connect + server deal
       this.socket = io('http://localhost:3001')
       this.socket.emit('joinRoom', this.roomId)
       this.socket.on('gameState', (state: any) => {
         console.log('Server state:', state)
-        // TODO: this.updateHandFromState(state)
       })
       localBtn.destroy();
       joinBtn.destroy();
@@ -142,8 +178,22 @@ export default class GameScene extends Phaser.Scene {
     })
   }
 
+  private getInsertIndexFromLocalX(localX: number): number {
+    let insertIndex = 0;
+
+    for (const sprite of this.handSprites.keys()) {
+      // Use center of each card as boundary
+      const cardCenter = sprite.x - ((sprite.width * sprite.scaleX) / 2);
+
+      if (localX > cardCenter) {
+        insertIndex++;
+      }
+    }
+
+    return insertIndex;
+  }
+
   private dealHand() {
-    // Full deck
     const suits: Card['suit'][] = ['spades', 'hearts', 'diamonds', 'clubs']
     const deck: Card[] = []
     for (const suit of suits) {
@@ -152,21 +202,45 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
-    // Fisher-Yates shuffle
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-        ;[deck[i], deck[j]] = [deck[j], deck[i]]
+      ;[deck[i], deck[j]] = [deck[j], deck[i]]
     }
 
-    // Deal 11 cards
     this.hand = deck.splice(0, 11)
     this.renderHand(this.hand)
   }
 
+  private updateHandVisualForDrag(insertIndex: number) {
+    const cardScale = 0.6;
+    const spacing = 55;
+    const handLength = this.handSprites.size; // Use map size for remaining
+    const startX = -(handLength) * spacing / 2; // Adjust for one less, but add space for placeholder
+
+    let visualIndex = 0;
+    for (const sprite of this.handSprites.keys()) {
+      let targetX = startX + visualIndex * spacing;
+      let targetY = Math.abs(visualIndex - handLength / 2) * 8;
+
+      if (visualIndex >= insertIndex) {
+        targetX += spacing; // Shift right for gap
+      }
+
+      this.tweens.add({
+        targets: sprite,
+        x: targetX,
+        y: targetY,
+        duration: 200,
+        ease: 'Power2'
+      });
+
+      visualIndex++;
+    }
+  }
+
   private renderHand(hand: Card[]) {
-    // Clear old safely
-    this.handContainer.removeAll(true);  // Destroys all child sprites
-    this.handSprites.clear();            // Empty the map
+    this.handContainer.removeAll(true);
+    this.handSprites.clear();
 
     const cardScale = 0.6;
     const spacing = 55;
@@ -175,7 +249,8 @@ export default class GameScene extends Phaser.Scene {
     for (let i = 0; i < hand.length; i++) {
       const card = hand[i];
       const frameName = this.getFrameName(card);
-      const sprite = this.add.sprite(startX + i * spacing, 0, 'cards', frameName)
+      const yOffset = Math.abs(i - (hand.length - 1) / 2) * 8;
+      const sprite = this.add.sprite(startX + i * spacing, yOffset, 'cards', frameName)
         .setScale(cardScale)
         .setInteractive({ draggable: true })
         .setDepth(11 + i);
@@ -186,7 +261,7 @@ export default class GameScene extends Phaser.Scene {
       sprite.on('pointerout', () => sprite.clearTint());
 
       this.handContainer.add(sprite);
-      this.handSprites.set(sprite, card);  // Key: sprite reference → Value: Card data
+      this.handSprites.set(sprite, card);
     }
   }
 
