@@ -1,23 +1,62 @@
 import { Card, Player, GameState } from './GameState'
+import { v4 as uuidv4 } from 'uuid';
 
 export class LocalGameState implements GameState {
-  decks: number = 3;
-  totalPlayers: number = 5;
+  decks: number;
+  totalPlayers: number;
   players: Player[] = [];
   drawPile: Card[] = [];
   discardPile: Card[] = [];
-  currentTurn: string = 'human';
+  cardOnTable: Card | null = null;
+  currentTurn: number = 0;
 
-  constructor() {
+  constructor(decks: number = 3, totalPlayers: number = 5) {
+    this.decks = decks;
+    this.totalPlayers = totalPlayers;
     this.initializePlayers();
     this.initializeDeck();
     this.dealCards();
   }
 
+  getPlayer(): Player | undefined {
+    return this.players.find(p => p.isPlayer);
+  }
+
+  getPlayerHand(): Card[] {
+    const player = this.getPlayer();
+    return player ? player.hand : [];
+  }
+
+  setPlayerHand(hand: Card[]): void {
+    const player = this.getPlayer();
+    if (player) {
+      player.hand = hand;
+    }
+  }
+
+  pushPlayerHand(card: Card): void {
+    const player = this.getPlayer();
+    if (player) {
+      player.hand.push(card);
+    }
+  }
+
+  popPlayerHand(): Card | undefined {
+    const player = this.getPlayer();
+    if (player) {
+      return player.hand.pop();
+    }
+    return undefined;
+  }
+
+  getOpponents(): Player[] {
+    return this.players.filter(p => !p.isPlayer);
+  }
+
   private initializePlayers() {
-    this.players.push({ id: 'human', hand: [], isPlayer: true, isHuman: true });
+    this.players.push({ id: uuidv4(), name: 'human', hand: [], isPlayer: true, isHuman: true });
     for (let i = 1; i < this.totalPlayers; i++) {
-      this.players.push({ id: `ai${i}`, hand: [], isPlayer: false, isHuman: false });
+      this.players.push({ id: uuidv4(), name: `ai${i}`, hand: [], isPlayer: false, isHuman: false });
     }
   }
 
@@ -28,7 +67,7 @@ export class LocalGameState implements GameState {
     for (let d = 0; d < this.decks; d++) {
       for (const suit of suits) {
         for (let rank = 1; rank <= 13; rank++) {
-          fullDeck.push({ suit, rank });
+          fullDeck.push({ suit, rank, guid: uuidv4() });
         }
       }
     }
@@ -48,11 +87,38 @@ export class LocalGameState implements GameState {
     }
   }
 
-  drawCard(playerId: string): Card | null {
+  drawCard(): Card | null {
     if (this.drawPile.length === 0) return null;
     const card = this.drawPile.pop()!;
-    const player = this.players.find(p => p.id === playerId);
-    if (player) player.hand.push(card);
+    this.cardOnTable = card;
     return card;
+  }
+
+  discardCardOnTable(): void {
+    if (this.cardOnTable) {
+      this.discardPile.push(this.cardOnTable);
+      this.cardOnTable = null;
+    }
+  }
+
+  playerTakesCardOnTable(index?: number): void {
+    if (this.cardOnTable) {
+      if (index !== undefined) {
+        this.getPlayerHand().splice(index, 0, this.cardOnTable);
+      } else {
+        this.pushPlayerHand(this.cardOnTable);
+      }
+      this.cardOnTable = null;
+    }
+  }
+
+  endTurn(): void {
+    console.log('Ending turn for local game state');
+    this.currentTurn = (this.currentTurn + 1) % this.totalPlayers;
+  }
+
+  isPlayerTurn(): boolean {
+    const playerIndex = this.players.findIndex(p => p.isPlayer);
+    return this.currentTurn === playerIndex;
   }
 }
