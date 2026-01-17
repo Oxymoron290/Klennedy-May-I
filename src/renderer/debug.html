@@ -405,7 +405,7 @@
     );
 
     pilesDiv.appendChild(
-      buildPile("Discard Pile", discard)
+      buildPile("Discard Pile", discard, true)
     );
   }
   
@@ -520,8 +520,8 @@
       playersDiv.appendChild(wrapper);
     }
   }
-
-  function buildPile(title, pile) {
+  
+  function buildPile(title, pile, isDiscard = false) {
     const wrapper = document.createElement("div");
     wrapper.className = "pile";
 
@@ -542,6 +542,25 @@
     }
 
     wrapper.appendChild(cardsDiv);
+
+    // Only add May I button to discard pile
+    if (isDiscard) {
+      const human = game.players.find(p => p.isHuman);
+      const topCard = pile[pile.length - 1];
+
+      const mayIBtn = document.createElement("button");
+      mayIBtn.textContent = "May I (top card)";
+      mayIBtn.disabled = !human || !topCard;
+
+      mayIBtn.onclick = async () => {
+        if (!human || !topCard) return;
+        await game.mayI(human, topCard);
+        render();
+      };
+
+      wrapper.appendChild(mayIBtn);
+    }
+
     return wrapper;
   }
 
