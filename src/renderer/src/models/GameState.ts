@@ -16,8 +16,10 @@ export interface GameState {
   players: Player[];
   drawPile: Card[];
   discardPile: Card[];
-  cardOnTable: Card | null;
   currentTurn: number;
+  
+  cardOnTable: Card | null;
+  drawnThisTurn: boolean;
 
   drawCard(): Card | null;
   getPlayer(): Player | undefined;

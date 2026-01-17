@@ -6,8 +6,10 @@ export class MultiplayerGameState implements GameState {
   players: Player[] = [];
   drawPile: Card[] = [];
   discardPile: Card[] = [];
-  cardOnTable: Card | null = null;
   currentTurn: number = 0;
+  
+  cardOnTable: Card | null = null;
+  drawnThisTurn: boolean = false;
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -68,6 +70,15 @@ export class MultiplayerGameState implements GameState {
     // In multiplayer, we request from server
     this.socket.emit('drawCard');
     return null; // Actual card comes via gameState event
+  }
+
+  drawDiscard(): Card | null {
+    this.socket.emit('drawDiscard');
+    return null;
+  }
+  
+  discard(card: Card): void {
+    this.socket.emit('discardCard', card);
   }
 
   discardCardOnTable(): void {

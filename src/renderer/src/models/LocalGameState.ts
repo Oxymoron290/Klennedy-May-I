@@ -7,8 +7,10 @@ export class LocalGameState implements GameState {
   players: Player[] = [];
   drawPile: Card[] = [];
   discardPile: Card[] = [];
-  cardOnTable: Card | null = null;
   currentTurn: number = 0;
+
+  cardOnTable: Card | null = null;
+  drawnThisTurn: boolean = false;
 
   constructor(decks: number = 3, totalPlayers: number = 5) {
     this.decks = decks;
@@ -85,20 +87,62 @@ export class LocalGameState implements GameState {
     for (const player of this.players) {
       player.hand = this.drawPile.splice(0, 11);
     }
+
+    this.discardPile.push(this.drawPile.pop()!);
   }
 
   drawCard(): Card | null {
-    if (this.drawPile.length === 0) return null;
+    if (this.drawPile.length === 0)
+    {
+      console.log('Draw pile is empty');
+      return null;
+    }
+    if (this.drawnThisTurn) {
+      console.log('Already drawn this turn');
+      return null;
+    }
     const card = this.drawPile.pop()!;
     this.cardOnTable = card;
+    this.drawnThisTurn = true;
     return card;
   }
 
-  discardCardOnTable(): void {
-    if (this.cardOnTable) {
-      this.discardPile.push(this.cardOnTable);
+  drawDiscard(): Card | null {
+    if (this.discardPile.length === 0) {
+      console.log('Discard pile is empty');
+      return null;
+    }
+    const card = this.discardPile.pop()!;
+    this.cardOnTable = card;
+    this.drawnThisTurn = true;
+    return card;
+  }
+
+  discard(card: Card): void {
+    // ensure the card is not in any player's hand
+    this.players.forEach(p => {
+      const index = p.hand.findIndex(c => c.guid === card.guid);
+      if (index !== -1) {
+        p.hand.splice(index, 1);
+        return;
+      }
+    });
+
+    // ensure the card is not in the draw pile
+    this.drawPile = this.drawPile.filter(c => c.guid !== card.guid);
+
+    // ensure the card is not the cardOnTable
+    if (this.cardOnTable && this.cardOnTable.guid === card.guid) {
       this.cardOnTable = null;
     }
+
+    this.discardPile.push(card);
+    
+    console.log('Discarded:', card);
+  }
+
+  discardCardOnTable(): void {
+    this.discard(this.cardOnTable!);
   }
 
   playerTakesCardOnTable(index?: number): void {
@@ -115,6 +159,8 @@ export class LocalGameState implements GameState {
   endTurn(): void {
     console.log('Ending turn for local game state');
     this.currentTurn = (this.currentTurn + 1) % this.totalPlayers;
+    this.drawnThisTurn = false;
+    this.cardOnTable = null;
   }
 
   isPlayerTurn(): boolean {

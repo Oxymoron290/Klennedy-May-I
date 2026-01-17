@@ -12,8 +12,10 @@ export default class GameScene extends Phaser.Scene {
 
   handContainer!: Phaser.GameObjects.Container;
   handSprites: Map<Phaser.GameObjects.Sprite, Card> = new Map();
+  discardContainer!: Phaser.GameObjects.Container;
   discardZone!: Phaser.GameObjects.Zone;
   drawPileSprite!: Phaser.GameObjects.Sprite;
+  playerNameText!: Phaser.GameObjects.Text;
 
   private draggedCardData: Card | null = null;
   private originalIndex: number = -1;
@@ -105,14 +107,15 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // Discard Zone
-    const discardRect = this.add.rectangle(650, 400, 84, 114, 0xff0000, 0.3)
+    this.discardContainer = this.add.container(650, 400).setDepth(10);
+    const discardRect = this.add.rectangle(this.discardContainer.x, this.discardContainer.y, 84, 114, 0xff0000, 0.3)
       .setOrigin(0.5)
       .setDepth(1)
-    this.discardZone = this.add.zone(discardRect.x, discardRect.y, 100, 130)
+    this.discardZone = this.add.zone(this.discardContainer.x, this.discardContainer.y, 100, 130)
       .setDropZone()
       .setInteractive({ cursor: 'pointer' })
       .setDepth(2)
-    this.add.text(discardRect.x, discardRect.y - 80, 'DISCARD', { fontSize: '20px', color: '#fff' }).setOrigin(0.5)
+    this.add.text(this.discardContainer.x, this.discardContainer.y - 80, 'DISCARD', { fontSize: '20px', color: '#fff' }).setOrigin(0.5)
 
     // Hand Container & Drop Zone
     this.handContainer = this.add.container(600, 700).setDepth(10)
@@ -167,7 +170,7 @@ export default class GameScene extends Phaser.Scene {
         this.handSprites.set(gameObject, this.draggedCardData);
       }
 
-      this.renderHand(this.gameState?.getPlayerHand() ?? []);
+      this.updateFromGameState();
       this.draggedCardData = null;
       this.originalIndex = -1;
     })
@@ -179,12 +182,6 @@ export default class GameScene extends Phaser.Scene {
         if (zone === this.discardZone) {
           // Discard drawn card
           console.log('Drew and discarded:', this.gameState?.cardOnTable);
-          
-          // Visual to discard pile
-          this.add.sprite(discardRect.x, discardRect.y, 'cards', this.getFrameName(this.gameState?.cardOnTable))
-            .setScale(0.6)
-            .setDepth(5);
-
           this.gameState?.discardCardOnTable();
           this.gameState!.endTurn();
         } else if (zone === handDropZone) {
@@ -201,8 +198,7 @@ export default class GameScene extends Phaser.Scene {
         this.pendingCardSprite?.destroy();
         this.pendingCardSprite = null;
 
-        // Now safe to rebuild hand — no duplicate left behind
-        this.renderHand(this.gameState?.getPlayerHand() ?? []);
+        this.updateFromGameState();
         return;
       }
       
@@ -213,15 +209,10 @@ export default class GameScene extends Phaser.Scene {
           console.log('Cannot discard - not your turn!');
           return;
         }
-        this.gameState!.getPlayerHand().splice(this.originalIndex, 1);
-        gameObject.removeInteractive();
-        this.handContainer.remove(gameObject, true);
-        console.log('Discarded:', this.draggedCardData);
 
-        this.add.sprite(this.discardZone.x, this.discardZone.y, 'cards', gameObject.frame.name)
-          .setScale(0.6)
-          .setDepth(5);
-          
+        this.gameState!.discard(this.draggedCardData);
+        gameObject.removeInteractive();
+        this.updateFromGameState();
         this.gameState!.endTurn();
       } else if (zone === handDropZone) {
         const dropX = pointer.x - this.handContainer.x;
@@ -233,18 +224,30 @@ export default class GameScene extends Phaser.Scene {
         console.log('Reordered to index:', insertIndex);
       }
 
-      this.renderHand(this.gameState?.getPlayerHand() ?? []);
+      this.updateFromGameState();
     })
   }
 
   private updateFromGameState() {
-    if (!this.gameState) return
+    if (!this.gameState) return;
 
     // Human hand
-    this.renderHand(this.gameState.getPlayerHand())
+    this.renderHand(this.gameState.getPlayerHand());
+
+    this.renderDiscardPile(this.gameState.discardPile);
+
+    this.renderPlayerName();
 
     // Render opponent hands (AI or real players)
-    this.renderOpponentHands()
+    this.renderOpponentHands();
+  }
+
+  private renderDiscardPile(discardPile: Card[]) {
+    const cDiscard = discardPile[discardPile.length - 1];
+    if (!cDiscard) return;
+    this.add.sprite(this.discardZone.x, this.discardZone.y, 'cards', this.getFrameName(cDiscard))
+      .setScale(0.6)
+      .setDepth(5);
   }
 
   private renderOpponentHands() {
@@ -382,5 +385,21 @@ export default class GameScene extends Phaser.Scene {
           card.rank === 13 ? 'K' :
             card.rank.toString()
     return `card${card.suit.charAt(0).toUpperCase() + card.suit.slice(1)}${rankStr}.png`
+  }
+
+  private renderPlayerName() {
+    const player = this.gameState?.getPlayer();
+    if (!player) return;
+
+    if (!this.playerNameText) {
+      this.playerNameText = this.add.text(600, 790, player.name.toUpperCase(), {
+        fontSize: '24px',
+        color: '#fff',
+        backgroundColor: '#000000aa',
+        padding: { x: 20, y: 10 }
+      }).setOrigin(0.5);
+    } else {
+      this.playerNameText.setText(player.name.toUpperCase());
+    }
   }
 }
