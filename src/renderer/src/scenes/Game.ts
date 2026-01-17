@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import io, { Socket } from 'socket.io-client';
 import { LocalGameState } from '../models/LocalGameState';
 import { MultiplayerGameState } from '../models/MultiplayerGameState';
-import { Card, Player, GameState } from '../models/GameState';
+import { Card, Player, GameState, MayIRequest } from '../models/GameState';
 import { AIPlayer, EasyBot, HardBot } from "../models/AIPlayer";
 
 export default class GameScene extends Phaser.Scene {
@@ -24,7 +24,7 @@ export default class GameScene extends Phaser.Scene {
   discardRect!: Phaser.GameObjects.Rectangle;
   handDropZone!: Phaser.GameObjects.Zone;
   scoreboardContainer!: Phaser.GameObjects.Container;
-  private mayIContainer!: Phaser.GameObjects.Container;
+  mayIContainer!: Phaser.GameObjects.Container;
 
   private draggedCardData: Card | null = null;
   private originalIndex: number = -1;
@@ -33,6 +33,8 @@ export default class GameScene extends Phaser.Scene {
   private pendingCardSprite: Phaser.GameObjects.Sprite | null = null;
   private activeMayIRequest: any = null;
   private mayIResultMode: boolean = false;
+  private activeIncomingMayI: MayIRequest | null = null;
+  private hasRespondedToIncoming = false;
 
   constructor() {
     super({ key: 'GameScene' })
@@ -112,20 +114,15 @@ export default class GameScene extends Phaser.Scene {
         console.log(`It's now ${currentPlayer?.name}'s turn.`);
         this.updateFromGameState();
       });
-      this.gameState!.onMayIRequest((request) => {
-        console.log('May I request received:', request);
-      });
-      this.gameState!.onMayIResponse((request, response) => {
-        console.log('May I response received:', request, response);
-      });
-      this.gameState!.onMayIResolved((request, accepted) => {
-        console.log(`May I request ${accepted ? 'accepted' : 'denied'} for card:`, request.card);
-      });
       this.gameState!.onMayIRequest(req => {
         const player = this.gameState!.players.find(p => p.isPlayer)!;
         if (req.player.id === player.id) {
           this.activeMayIRequest = req;
           this.renderMayIUI();
+        } else {
+          this.activeIncomingMayI = req;
+          this.hasRespondedToIncoming = false;
+          this.renderMayIOverlay();
         }
       });
 
@@ -133,9 +130,16 @@ export default class GameScene extends Phaser.Scene {
         if (this.activeMayIRequest?.id === req.id) {
           this.renderMayIUI();
         }
+        
+        if (this.activeIncomingMayI) {
+          this.renderMayIOverlay();
+        }
       });
 
       this.gameState!.onMayIResolved((request, accepted) => {
+        if (this.activeIncomingMayI?.id === request.id) {
+          this.handleIncomingResolution(request);
+        }
         if (this.activeMayIRequest?.id !== request.id) return;
 
         if (!accepted) {
@@ -369,6 +373,156 @@ export default class GameScene extends Phaser.Scene {
     this.renderOpponentHands();
   }
 
+  private renderMayIOverlay() {
+    const req = this.activeIncomingMayI;
+    if (!req) return;
+
+    this.mayIContainer.removeAll(true);
+    this.mayIContainer.setVisible(true);
+
+    const bg = this.add.rectangle(0, 0, 520, 120, 0x000000, 0.8).setOrigin(0.5);
+    this.mayIContainer.add(bg);
+
+    const text = this.add.text(-240, -45, `${req.player.name} requests ${req.card.suit} ${req.card.rank}`, {
+      fontSize: "16px",
+      color: "#ffffff"
+    });
+    this.mayIContainer.add(text);
+
+    // Requested card
+    const cardSprite = this.add.sprite(-200, 10, "cards", this.getFrameName(req.card))
+      .setScale(0.5);
+    this.mayIContainer.add(cardSprite);
+
+    const me = this.gameState!.players.find(p => p.isPlayer)!;
+    const myVote = req.responses.find(r => r.player.id === me.id);
+
+    if (!this.hasRespondedToIncoming) {
+      const accept = this.add.text(80, 10, "ACCEPT", { fontSize: "18px", backgroundColor: "#00aa00" })
+        .setInteractive();
+      const deny = this.add.text(180, 10, "DENY", { fontSize: "18px", backgroundColor: "#aa0000" })
+        .setInteractive();
+
+      accept.on("pointerdown", () => {
+        this.hasRespondedToIncoming = true;
+        this.gameState!.respondToMayI(me, req, true);
+        this.renderMayIOverlay();
+      });
+
+      deny.on("pointerdown", () => {
+        this.hasRespondedToIncoming = true;
+        this.gameState!.respondToMayI(me, req, false);
+        this.renderMayIOverlay();
+      });
+
+      this.mayIContainer.add(accept);
+      this.mayIContainer.add(deny);
+    } else {
+      this.renderVoteStatus(req);
+    }
+  }
+
+  private renderVoteStatus(req: MayIRequest) {
+    const voters = this.gameState!.players.filter(p => p.id !== req.player.id);
+
+    voters.forEach((p, i) => {
+      const vote = req.responses.find(r => r.player.id === p.id);
+      const label = vote ? (vote.accepted ? "YES" : "NO") : "...";
+
+      const text = this.add.text(-50 + i * 90, 40, `${p.name}\n${label}`, {
+        fontSize: "12px",
+        align: "center",
+        color: vote?.accepted ? "#00ff00" : vote ? "#ff0000" : "#cccccc"
+      });
+
+      this.mayIContainer.add(text);
+    });
+  }
+
+  private handleIncomingResolution(req: MayIRequest) {
+    this.renderMayIOverlay();
+
+    if (req.responses.every(r => r.accepted)) {
+      // Accepted, show two cards
+      const bg = this.add.rectangle(0, 0, 520, 120, 0x000000, 0.8).setOrigin(0.5);
+      const requested = this.add.sprite(-40, 0, "cards", this.getFrameName(req.card)).setScale(0.5);
+      const penalty = this.add.sprite(40, 0, "backs", this.cardBackTexture).setScale(0.5);
+
+      this.mayIContainer.removeAll(true);
+      this.mayIContainer.add(bg);
+      this.mayIContainer.add(requested);
+      this.mayIContainer.add(penalty);
+
+      this.time.delayedCall(1200, () => {
+        this.animateCardsToOpponent(req.player, [requested, penalty]);
+      });
+    } else {
+      // Denied
+      this.time.delayedCall(1500, () => this.resetMayIUI());
+    }
+  }
+
+  private animateCardsToOpponent(player: Player, sprites: Phaser.GameObjects.Sprite[]) {
+    const opponents = this.gameState!.players.filter(p => !p.isPlayer);
+    const index = opponents.findIndex(p => p.id === player.id);
+    const targetContainer = this.opponentHandContainers[index];
+
+    // Snapshot target position in world space (do NOT rely on container staying alive)
+    const targetX = targetContainer?.x ?? 600;
+    const targetY = targetContainer?.y ?? 400;
+
+    let completed = 0;
+
+    sprites.forEach((sprite, i) => {
+      // Convert sprite's current position to world coordinates BEFORE removing it
+      const worldPos = this.getWorldPos(sprite);
+
+      // Detach from mayIContainer so it no longer inherits visibility/transform
+      this.mayIContainer.remove(sprite);
+
+      // Now it's a "world" object in the scene display list, so set to world coords
+      sprite.x = worldPos.x;
+      sprite.y = worldPos.y;
+      sprite.setDepth(200);
+
+      this.tweens.add({
+        targets: sprite,
+        x: targetX,
+        y: targetY,
+        scale: 0.35,
+        duration: 600,
+        ease: 'Power2',
+        delay: i * 120,
+        onComplete: () => {
+          sprite.destroy();
+          completed++;
+
+          // Only cleanup UI after all card tweens finish
+          if (completed === sprites.length) {
+            this.resetMayIUI();
+            this.updateFromGameState();
+          }
+        }
+      });
+    });
+  }
+
+  private getWorldPos(obj: Phaser.GameObjects.Sprite) {
+    const mat = obj.getWorldTransformMatrix();
+    const out = new Phaser.Math.Vector2();
+    mat.transformPoint(0, 0, out);
+    return out;
+  }
+  
+  private resetMayIUI() {
+    this.activeIncomingMayI = null;
+    this.activeMayIRequest = null;
+    this.mayIResultMode = false;
+    this.hasRespondedToIncoming = false;
+    this.mayIContainer.removeAll(true);
+    this.mayIContainer.setVisible(false);
+  }
+  
   private renderMayIUI() {
     if (!this.activeMayIRequest) return;
 
@@ -602,11 +756,14 @@ export default class GameScene extends Phaser.Scene {
     return parts.length ? parts.join(' & ') : '-';
   }
 
-  private addPendingCardSprite(card: Card) {
+  private addPendingCardSprite(card: Card, fromDiscard: boolean = false) {
     const frameName = this.getFrameName(card)
+    const x = fromDiscard ? this.discardContainer.x : this.drawPileSprite.x;
+    const y = fromDiscard ? this.discardContainer.y : this.drawPileSprite.y;
+
     this.pendingCardSprite = this.add.sprite(
-      this.drawPileSprite.x,
-      this.drawPileSprite.y,
+      x,
+      y,
       'cards',
       frameName
     )
@@ -648,7 +805,8 @@ export default class GameScene extends Phaser.Scene {
           } else {
             const drawn = this.gameState?.drawDiscard();
             if (!drawn) return;
-            this.pendingCardSprite = sprite;
+            //this.pendingCardSprite = sprite;
+            this.addPendingCardSprite(drawn, true)
           }
         });
       }

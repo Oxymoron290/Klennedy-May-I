@@ -1,4 +1,4 @@
-import { Player, Card, MayIRequest } from "./GameState";
+import { Player, MayIRequest } from "./GameState";
 import { LocalGameState } from "./LocalGameState";
 
 export interface AIProfile {
@@ -6,20 +6,23 @@ export interface AIProfile {
   mayIDenyChance: number; // 0.0 - 1.0
   thinkDelayMs: number;
   drawFromDiscardChance: number; // 0.0 - 1.0
+  requestMayIChance: number; // 0.0 - 1.0
 }
 
 export const EasyBot: AIProfile = {
   name: "Easy",
   mayIDenyChance: 0.05,
   thinkDelayMs: 1000,
-  drawFromDiscardChance: 0.3
+  drawFromDiscardChance: 0.3,
+  requestMayIChance: 0.01
 };
 
 export const HardBot: AIProfile = {
   name: "Hard",
   mayIDenyChance: 0.25,
   thinkDelayMs: 1700,
-  drawFromDiscardChance: 0.7
+  drawFromDiscardChance: 0.7,
+  requestMayIChance: 0.04
 };
 
 export class AIPlayer {
@@ -35,12 +38,22 @@ export class AIPlayer {
     this.game.onTurnAdvance(p => {
       if (p.id === this.player.id) {
         this.takeTurn();
+      } else {
+        this.considerRequestingMayI();
       }
+    });
+
+    this.game.onOpponentDiscard((p, card) => {
+      this.considerRequestingMayI();
+    });
+
+    this.game.onOpponentDrawFromDiscard((p, card) => {
+      this.considerRequestingMayI();
     });
 
     this.game.onMayIRequest(req => {
       if (req.player.id !== this.player.id) {
-        this.considerMayI(req);
+        this.considerMayIRequest(req);
       }
     });
   }
@@ -81,7 +94,16 @@ export class AIPlayer {
     await this.game.endTurn();
   }
 
-  private async considerMayI(request: MayIRequest) {
+  private async considerRequestingMayI() {
+    // TODO: implement logic to decide whether to request May I
+    // Look at the top card of the discard pile and see if it helps form melds
+    if (Math.random() < this.profile.requestMayIChance) {
+      const topCard = this.game.discardPile[this.game.discardPile.length - 1];
+      this.game.mayI(this.player, topCard);
+    }
+  }
+
+  private async considerMayIRequest(request: MayIRequest) {
     await this.delay(this.profile.thinkDelayMs);
 
     const deny = Math.random() < this.profile.mayIDenyChance;
