@@ -35,7 +35,7 @@ export class LocalGameState implements GameState {
   discardPile: Card[] = [];
   currentTurn: number = 0;
   currentRound: number = 0;
-  mayIRequestExpirationMs: number = 15000; // 15 seconds
+  mayIRequestExpirationMs: number = 45000; // 45 seconds
   roundConfigs = roundConfigs;
 
   mayIRequests: MayIRequest[] = [];
@@ -101,7 +101,6 @@ export class LocalGameState implements GameState {
   onMayINextVoter(callback: (request: MayIRequest, nextVoter: Player) => void): void {
     this.onMayINextVoterCallbacks.push(callback);
   }
-
 
   private opponentDraw(player: Player) {
     for (const cb of this.onOpponentDrawCallbacks) {
