@@ -7,13 +7,15 @@
 - [x] a condition exists that caused the opponent "May I" request disappear.
 - [x] vote in order for may i requests
 - [x] On first turn if you click the dicard pile the card disappears and is not in the discard pile or in your hand.
-- [ ] only display vote buttons when it is the players turn to vote.
+- [x] only display vote buttons when it is the players turn to vote.
 - [ ] if an AI makes a May I request during a human turn the UI might disappear (especially at the start)
+    - something in the updateFromGameState function is resetting it or something.
 - [ ] Add a timeout for may I requests.
 - [ ] Klennedy penalty Rules
 - [ ] ability to cancel a "May I" request
 - [ ] ability to form melds
 - [ ] render the player rejecting a may I and taking the penalty
+- [ ] current card count/value totals in bottom right.
 
 - [ ] Multiplayer
 

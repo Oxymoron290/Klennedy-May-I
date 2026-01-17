@@ -1,6 +1,5 @@
 import { Socket } from 'socket.io-client'
 import { Card, Player, GameState, MayIRequest, MayIResponse } from './GameState'
-import { request } from 'express';
 
 export class MultiplayerGameState implements GameState {
   private socket: Socket;
@@ -19,6 +18,7 @@ export class MultiplayerGameState implements GameState {
   private onMayIRequestCallbacks: Array<(request: MayIRequest) => void> = [];
   private onMayIResponseCallbacks: Array<(request: MayIRequest, response: MayIResponse) => void> = [];
   private onMayIResolvedCallbacks: Array<(request: MayIRequest, accepted: boolean) => void> = [];
+  private onMayINextVoterCallbacks: Array<(request: MayIRequest, nextVoter: Player) => void> = [];
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -67,6 +67,10 @@ export class MultiplayerGameState implements GameState {
 
   onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void {
     this.onMayIResolvedCallbacks.push(callback);
+  }
+
+  onMayINextVoter(callback: (request: MayIRequest, nextVoter: Player) => void): void {
+    this.onMayINextVoterCallbacks.push(callback);
   }
 
   private opponentDraw(player: Player) {
