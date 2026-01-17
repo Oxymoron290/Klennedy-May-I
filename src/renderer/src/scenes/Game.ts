@@ -24,12 +24,14 @@ export default class GameScene extends Phaser.Scene {
   discardRect!: Phaser.GameObjects.Rectangle;
   handDropZone!: Phaser.GameObjects.Zone;
   scoreboardContainer!: Phaser.GameObjects.Container;
+  private mayIContainer!: Phaser.GameObjects.Container;
 
   private draggedCardData: Card | null = null;
   private originalIndex: number = -1;
   private opponentHandContainers: Phaser.GameObjects.Container[] = [];
   private opponentNameTexts: Phaser.GameObjects.Text[] = [];
   private pendingCardSprite: Phaser.GameObjects.Sprite | null = null;
+  private activeMayIRequest: any = null;
 
   constructor() {
     super({ key: 'GameScene' })
@@ -118,6 +120,36 @@ export default class GameScene extends Phaser.Scene {
       this.gameState!.onMayIResolved((request, accepted) => {
         console.log(`May I request ${accepted ? 'accepted' : 'denied'} for card:`, request.card);
       });
+      this.gameState!.onMayIRequest(req => {
+        const player = this.gameState!.players.find(p => p.isPlayer)!;
+        if (req.player.id === player.id) {
+          this.activeMayIRequest = req;
+          this.renderMayIUI();
+        }
+      });
+
+      this.gameState!.onMayIResponse((req, res) => {
+        if (this.activeMayIRequest?.id === req.id) {
+          this.renderMayIUI();
+        }
+      });
+
+      this.gameState!.onMayIResolved((req, accepted) => {
+        if (this.activeMayIRequest?.id !== req.id) return;
+
+        // Re-render one last time to ensure final votes are visible
+        this.renderMayIUI();
+
+        if (accepted) {
+          this.animateMayISuccess(req);
+        } else {
+          // Denied, keep visible for a moment
+          this.time.delayedCall(2000, () => {
+            this.activeMayIRequest = null;
+            this.mayIContainer.setVisible(false);
+          });
+        }
+      });
 
       this.gameState!.startGame();
 
@@ -173,7 +205,11 @@ export default class GameScene extends Phaser.Scene {
     this.discardPileText = this.add.text(this.discardContainer.x, this.discardContainer.y - 80, 'DISCARD', { fontSize: '20px', color: '#fff' })
       .setOrigin(0.5)
       .setVisible(false)
-    
+
+    this.mayIContainer = this.add.container(600, 560)
+      .setDepth(80)
+      .setVisible(false);
+
     // Hand Container & Drop Zone
     this.handContainer = this.add.container(600, 700).setDepth(10).setVisible(false)
     this.handContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, 1200, 200), Phaser.Geom.Rectangle.Contains)
@@ -324,6 +360,141 @@ export default class GameScene extends Phaser.Scene {
 
     // Render opponent hands (AI or real players)
     this.renderOpponentHands();
+  }
+
+  private renderMayIUI() {
+    if (!this.activeMayIRequest) return;
+
+    const request = this.activeMayIRequest;
+    const card = request.card;
+
+    this.mayIContainer.removeAll(true);
+    this.mayIContainer.setVisible(true);
+
+    // Background box
+    const width = 520;
+    const height = 120;
+    const bg = this.add.rectangle(-width/2, -height/2, width, height, 0x000000, 0.6)
+      .setOrigin(0, 0);
+    bg.setStrokeStyle(2, 0xffffff, 0.2);
+    this.mayIContainer.add(bg);
+
+    // Requested card (left side)
+    const cardSprite = this.add.sprite(-width/2 + 60, 0, 'cards', this.getFrameName(card))
+      .setScale(0.5);
+    this.mayIContainer.add(cardSprite);
+
+    // Eligible voters (everyone except requester)
+    const voters = this.gameState!.players.filter(p => p.id !== request.player.id);
+
+    const startX = -width/2 + 130;
+    const spacing = 90;
+
+    voters.forEach((player, i) => {
+      const x = startX + i * spacing;
+
+      const response = request.responses.find((r: any) => r.player.id === player.id);
+
+      let color = '#888';
+      let status = 'Waiting';
+
+      if (response) {
+        if (response.accepted) {
+          color = '#00ff00';
+          status = 'Allow';
+        } else {
+          color = '#ff4444';
+          status = 'Deny';
+        }
+      }
+
+      const plate = this.add.rectangle(x, -20, 80, 28, 0x111111, 0.8)
+        .setStrokeStyle(1, 0xffffff, 0.2);
+      this.mayIContainer.add(plate);
+
+      const name = this.add.text(x, -20, player.name, {
+        fontSize: '11px',
+        color: '#ffffff'
+      }).setOrigin(0.5);
+      this.mayIContainer.add(name);
+
+      const statusText = this.add.text(x, 10, status, {
+        fontSize: '11px',
+        color
+      }).setOrigin(0.5);
+      this.mayIContainer.add(statusText);
+    });
+  }
+
+  private animateMayISuccess(request: any) {
+    const playerHandPos = new Phaser.Math.Vector2(
+      this.handContainer.x,
+      this.handContainer.y
+    );
+
+    const requestedFrame = this.getFrameName(request.card);
+    const penaltyFrame = request.penaltyCard
+      ? this.getFrameName(request.penaltyCard)
+      : null;
+
+    // 1. Animate requested card from discard pile
+    const requestedSprite = this.add.sprite(
+      this.discardZone.x,
+      this.discardZone.y,
+      "cards",
+      requestedFrame
+    )
+      .setScale(0.6)
+      .setDepth(100);
+
+    this.tweens.add({
+      targets: requestedSprite,
+      x: playerHandPos.x,
+      y: playerHandPos.y,
+      scale: 0.4,
+      duration: 500,
+      ease: "Cubic.easeOut",
+      onComplete: () => {
+        requestedSprite.destroy();
+
+        // 2. Animate penalty card from draw pile (if present)
+        if (penaltyFrame) {
+          this.animatePenaltyCard(penaltyFrame);
+        } else {
+          this.finishMayIAnimation();
+        }
+      }
+    });
+  }
+
+  private animatePenaltyCard(frameName: string) {
+    const penaltySprite = this.add.sprite(
+      this.drawPileSprite.x,
+      this.drawPileSprite.y,
+      "cards",
+      frameName
+    )
+      .setScale(0.6)
+      .setDepth(100);
+
+    this.tweens.add({
+      targets: penaltySprite,
+      x: this.handContainer.x,
+      y: this.handContainer.y,
+      scale: 0.4,
+      duration: 500,
+      ease: "Cubic.easeOut",
+      onComplete: () => {
+        penaltySprite.destroy();
+        this.finishMayIAnimation();
+      }
+    });
+  }
+
+  private finishMayIAnimation() {
+    this.activeMayIRequest = null;
+    this.mayIContainer.setVisible(false);
+    this.updateFromGameState();
   }
 
   private renderScoreboard() {

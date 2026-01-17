@@ -154,12 +154,12 @@ export class LocalGameState implements GameState {
       
       // Add card to requesting player's hand
       request.player.hand.push(request.card);
-      
-      // Player must also draw a penalty card from draw pile
+
       // TODO: Klennedy rule.
       if (this.drawPile.length > 0) {
         const penaltyCard = this.drawPile.pop()!;
         request.player.hand.push(penaltyCard);
+        request.peanaltyCard = penaltyCard;
         console.log(`${request.player.name} also drew penalty card:`, penaltyCard);
       }
     }
@@ -324,6 +324,7 @@ export class LocalGameState implements GameState {
       card,
       responses: [],
       resolved: false,
+      peanaltyCard: null
     };
 
     this.mayIRequests.push(request);
