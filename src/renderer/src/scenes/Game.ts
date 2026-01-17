@@ -6,6 +6,7 @@ import { Card, Player, GameState } from '../models/GameState';
 
 export default class GameScene extends Phaser.Scene {
   socket!: Socket;
+  onlineModeEnabled: boolean = false;
   roomId: string = 'test';
   cardBackTexture: string = 'cardBack_blue2.png';
   wandaMode: boolean = true;
@@ -40,13 +41,23 @@ export default class GameScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5)
 
+    let joinBtn: Phaser.GameObjects.Text;
     // Mode selection
-    const joinBtn = this.add.text(600, 150, 'Multiplayer', {
-      fontSize: '24px',
-      color: '#0f0',
-      backgroundColor: '#000',
-      padding: { x: 20, y: 10 }
-    }).setOrigin(0.5).setInteractive({ cursor: 'pointer' })
+    if(this.onlineModeEnabled) {
+      joinBtn = this.add.text(600, 150, 'Multiplayer', {
+        fontSize: '24px',
+        color: '#0f0',
+        backgroundColor: '#000',
+        padding: { x: 20, y: 10 }
+      }).setOrigin(0.5).setInteractive({ cursor: 'pointer' })
+
+      joinBtn.on('pointerdown', () => {
+        this.socket = io('http://localhost:3001')
+        this.gameState = new MultiplayerGameState(this.socket)
+        joinBtn.destroy()
+        localBtn.destroy()
+      })
+    }
 
     const localBtn = this.add.text(600, 200, 'Single Player', {
       fontSize: '24px',
@@ -54,13 +65,6 @@ export default class GameScene extends Phaser.Scene {
       backgroundColor: '#000',
       padding: { x: 20, y: 10 }
     }).setOrigin(0.5).setInteractive({ cursor: 'pointer' })
-
-    joinBtn.on('pointerdown', () => {
-      this.socket = io('http://localhost:3001')
-      this.gameState = new MultiplayerGameState(this.socket)
-      joinBtn.destroy()
-      localBtn.destroy()
-    })
 
     localBtn.on('pointerdown', () => {
       this.gameState = new LocalGameState();
@@ -85,7 +89,7 @@ export default class GameScene extends Phaser.Scene {
 
       this.updateFromGameState();
       localBtn.destroy();
-      joinBtn.destroy();
+      if (joinBtn) joinBtn.destroy();
     })
 
     // Draw pile (top back card)
