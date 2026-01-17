@@ -106,11 +106,39 @@
       margin-bottom: 16px;
       background: #111;
     }
+    
+    .resolved-container {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 8px;
+      border: 1px solid #333;
+      background: #0f0f0f;
+    }
+
+    .resolved-container::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .resolved-container::-webkit-scrollbar-thumb {
+      background: #333;
+    }
 
     .resolved-item {
-      border-bottom: 1px solid #222;
-      padding: 4px 0;
-      font-size: 12px;
+      flex: 0 0 auto;
+      border: 1px solid #222;
+      padding: 8px;
+      background: #111;
+      min-width: 220px;
+    }
+
+    .resolved-item .mayI-body {
+      gap: 8px;
+    }
+
+    .resolved-item .mayI-card {
+      transform: scale(0.5);
+      transform-origin: top left;
     }
 
     .resolved-item:last-child {
@@ -248,10 +276,7 @@
     game.onMayIResponse(() => render());
     game.onMayINextVoter(() => render());
     game.onMayIResolved((req, accepted) => {
-      resolvedRequests.unshift({
-        req,
-        accepted
-      });
+      resolvedRequests.unshift(req);
 
       // keep list bounded so it does not grow forever
       if (resolvedRequests.length > 50) {
@@ -400,42 +425,79 @@
     mayIDiv.appendChild(wrapper);
   }
 
-
   function renderResolvedMayI() {
     resolvedDiv.innerHTML = "";
 
     if (!resolvedRequests.length) {
-      resolvedDiv.textContent = "No resolved requests yet";
+      resolvedDiv.textContent = "No resolved May I requests yet";
       return;
     }
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "resolved";
+    const container = document.createElement("div");
+    container.className = "resolved-container";
 
-    for (const entry of resolvedRequests) {
-      const { req, accepted } = entry;
+    // oldest to the right = render newest first
+    const ordered = [...resolvedRequests];//.reverse();
 
-      const row = document.createElement("div");
-      row.className = "resolved-item";
+    for (const req of ordered) {
+      const reqDiv = document.createElement("div");
+      reqDiv.className = "resolved-item";
 
-      const result = accepted
-        ? `<span class="resolved-accepted">ACCEPTED</span>`
-        : `<span class="resolved-denied">DENIED</span>`;
+      const header = document.createElement("strong");
+      header.textContent = `Request from ${req.player.name}`;
+      reqDiv.appendChild(header);
 
-      const denied = req.deniedBy ? ` by ${req.deniedBy.name}` : "";
-      const winner = req.winner ? ` -> ${req.winner.name}` : "";
+      reqDiv.appendChild(document.createElement("br"));
 
-      row.innerHTML = `
-        ${req.player.name} requested ${formatCard(req.card)}
-        ${result}${denied}${winner}
-      `;
+      const body = document.createElement("div");
+      body.className = "mayI-body";
 
-      wrapper.appendChild(row);
+      const cardWrapper = document.createElement("div");
+      cardWrapper.className = "mayI-card";
+
+      const cardDiv = document.createElement("div");
+      cardDiv.className = "card";
+      applyCardStyle(cardDiv, req.card);
+      cardWrapper.appendChild(cardDiv);
+
+      const votersDiv = document.createElement("div");
+      votersDiv.className = "voters";
+
+      req.voters.forEach(voter => {
+        const span = document.createElement("div");
+        span.className = "voter";
+
+        const response = req.responses.find(r => r.player.id === voter.id);
+        if (response) {
+          span.classList.add(response.accepted ? "accepted" : "denied");
+        }
+
+        span.textContent = voter.name;
+        votersDiv.appendChild(span);
+      });
+
+      body.appendChild(cardWrapper);
+      body.appendChild(votersDiv);
+      reqDiv.appendChild(body);
+
+      const footer = document.createElement("div");
+      footer.style.marginTop = "6px";
+      footer.style.fontSize = "11px";
+      footer.style.opacity = "0.7";
+
+      if (req.deniedBy) {
+        footer.textContent = `Denied by ${req.deniedBy.name}`;
+      } else {
+        footer.textContent = `Winner: ${req.winner?.name}`;
+      }
+
+      reqDiv.appendChild(footer);
+
+      container.appendChild(reqDiv);
     }
 
-    resolvedDiv.appendChild(wrapper);
+    resolvedDiv.appendChild(container);
   }
-
 
   function renderPiles() {
     pilesDiv.innerHTML = "";

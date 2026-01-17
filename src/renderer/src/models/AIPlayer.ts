@@ -12,7 +12,7 @@ export interface AIProfile {
 export const EasyBot: AIProfile = {
   name: "Easy",
   mayIDenyChance: 0.05,
-  thinkDelayMs: 1000,
+  thinkDelayMs: 250,//1000,
   drawFromDiscardChance: 0.3,
   requestMayIChance: 0.01
 };
@@ -20,7 +20,7 @@ export const EasyBot: AIProfile = {
 export const HardBot: AIProfile = {
   name: "Hard",
   mayIDenyChance: 0.25,
-  thinkDelayMs: 1700,
+  thinkDelayMs: 500,//1700,
   drawFromDiscardChance: 0.7,
   requestMayIChance: 0.04
 };
