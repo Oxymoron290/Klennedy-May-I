@@ -69,6 +69,10 @@ export default class GameScene extends Phaser.Scene {
         console.log(`${player.name} drew a card.`);
         this.animateOpponentDraw(player);
       });
+      this.gameState!.onOpponentDrawFromDiscard((player: Player, card: Card) => {
+        console.log(`${player.name} drew from discard: ${card?.suit} ${card?.rank}`);
+        this.animateOpponentDiscardDraw(player);
+      });
       this.gameState!.onOpponentDiscard((player: Player, card: Card) => {
         console.log(`${player.name} discarded ${card?.suit} ${card?.rank}`);
         this.animateOpponentDiscard(player, card);
@@ -124,7 +128,7 @@ export default class GameScene extends Phaser.Scene {
       .setInteractive({ cursor: 'pointer' })
       .setDepth(3);
     this.add.text(this.discardContainer.x, this.discardContainer.y - 80, 'DISCARD', { fontSize: '20px', color: '#fff' }).setOrigin(0.5)
-
+    
     // Hand Container & Drop Zone
     this.handContainer = this.add.container(600, 700).setDepth(10)
     this.handContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, 1200, 200), Phaser.Geom.Rectangle.Contains)
@@ -189,6 +193,9 @@ export default class GameScene extends Phaser.Scene {
         if (zone === this.discardZone) {
           // Discard drawn card
           console.log('Drew and discarded:', this.gameState?.cardOnTable);
+          
+          // TODO: what is this.pendingCardSprite was drawn from the discard pile?
+
           this.gameState?.discardCardOnTable();
           this.gameState!.endTurn();
         } else if (zone === handDropZone) {
@@ -200,10 +207,6 @@ export default class GameScene extends Phaser.Scene {
           console.log('Reordered to index:', insertIndex);
           this.gameState?.playerTakesCardOnTable(insertIndex);
         }
-
-        // IMPORTANT: Destroy the pending sprite BEFORE re-rendering
-        this.pendingCardSprite?.destroy();
-        this.pendingCardSprite = null;
 
         this.updateFromGameState();
         return;
@@ -281,19 +284,29 @@ export default class GameScene extends Phaser.Scene {
           card.rotation = Math.random() * Math.PI * 2;
         }
       }
-      this.discardContainer.add(
-        this.add.sprite(offsetX, offsetX, 'cards', frameName)
-          .setScale(0.6)
-          .setRotation(card.rotation || 0)
-          .setDepth(5 + index)
-      );
-    });
+      const sprite = this.add.sprite(offsetX, offsetX, 'cards', frameName)
+        .setScale(0.6)
+        .setRotation(card.rotation || 0)
+        .setDepth(5 + index);
 
-    // const cDiscard = discardPile[discardPile.length - 1];
-    // if (!cDiscard) return;
-    // this.add.sprite(this.discardZone.x, this.discardZone.y, 'cards', this.getFrameName(cDiscard))
-    //   .setScale(0.6)
-    //   .setDepth(5);
+      // Only make the last card interactive
+      if (index === discardPile.length - 1) {
+        sprite.setInteractive({ draggable: true });
+
+        sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+          if (!this.gameState?.isPlayerTurn()) {
+            console.log('This will be a may I request.');
+            return;
+          } else {
+            const drawn = this.gameState?.drawDiscard();
+            if (!drawn) return;
+            this.pendingCardSprite = sprite;
+          }
+        });
+      }
+
+      this.discardContainer.add(sprite);
+    });
   }
 
   private renderOpponentHands() {
@@ -500,6 +513,36 @@ export default class GameScene extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => {
         cardBack.destroy();
+        this.updateFromGameState();
+      }
+    });
+  }
+
+  private animateOpponentDiscardDraw(player: Player) {
+    const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
+    const opponentIndex = opponents.findIndex(opp => opp.id === player.id);
+    if (opponentIndex === -1) return;
+    const targetContainer = this.opponentHandContainers[opponentIndex];
+    if (!targetContainer) return;
+    // Create a card sprite at the discard pile position showing the actual card
+    const cardSprite = this.add.sprite(
+      this.discardZone.x,
+      this.discardZone.y,
+      'cards',
+      this.getFrameName(this.gameState?.cardOnTable!) // Last card drawn
+    )
+      .setScale(0.6)
+      .setDepth(50);
+    // Animate the card from discard pile to opponent's hand
+    this.tweens.add({
+      targets: cardSprite,
+      x: targetContainer.x,
+      y: targetContainer.y,
+      scale: 0.35,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => {
+        cardSprite.destroy();
         this.updateFromGameState();
       }
     });

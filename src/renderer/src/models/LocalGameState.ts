@@ -54,10 +54,10 @@ export class LocalGameState implements GameState {
 
   private opponentDrawFromDiscard(player: Player, card: Card) {
     if (this.onOpponentDrawFromDiscardCallback) {
-      this.onOpponentDrawFromDiscardCallback(player, this.cardOnTable!);
+      this.onOpponentDrawFromDiscardCallback(player, card);
     }
   }
-  
+
   private opponentDiscard(player: Player, card: Card) {
     if (this.onOpponentDiscardCallback) {
       this.onOpponentDiscardCallback(player, card);
@@ -258,10 +258,18 @@ export class LocalGameState implements GameState {
 
     await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate thinking time
 
-    // AI draws a card
-    const drawnCard = this.drawCard();
+    // AI draws a card - randomly decide to draw from discard pile or draw pile
+    const shouldDrawFromDiscard = this.discardPile.length > 0 && Math.random() > 0.5;
+    console.log(`AI ${currentPlayer.name} drawing from ${shouldDrawFromDiscard ? 'discard pile' : 'draw pile'}`);
+    const drawnCard = shouldDrawFromDiscard ? this.drawDiscard() : this.drawCard();
     if (!drawnCard) return;
-    this.opponentDraw(currentPlayer);
+    
+    if (shouldDrawFromDiscard) {
+      this.opponentDrawFromDiscard(currentPlayer, drawnCard);
+      console.log(`AI ${currentPlayer.name} drew from discard:`, drawnCard);
+    } else {
+      this.opponentDraw(currentPlayer);
+    }
 
     await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate thinking time
 
