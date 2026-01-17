@@ -18,6 +18,10 @@ export default class GameScene extends Phaser.Scene {
   discardZone!: Phaser.GameObjects.Zone;
   drawPileSprite!: Phaser.GameObjects.Sprite;
   playerNameText!: Phaser.GameObjects.Text;
+  drawPileText!: Phaser.GameObjects.Text;
+  discardPileText!: Phaser.GameObjects.Text;
+  discardRect!: Phaser.GameObjects.Rectangle;
+  handDropZone!: Phaser.GameObjects.Zone;
 
   private draggedCardData: Card | null = null;
   private originalIndex: number = -1;
@@ -32,6 +36,10 @@ export default class GameScene extends Phaser.Scene {
   preload() {
     this.load.atlasXML('cards', '/playingCards.png', '/playingCards.xml')
     this.load.atlasXML('backs', '/playingCardBacks.png', '/playingCardBacks.xml')
+  }
+
+  private drawTable() {
+    
   }
 
   create() {
@@ -95,9 +103,12 @@ export default class GameScene extends Phaser.Scene {
     // Draw pile (top back card)
     this.drawPileSprite = this.add.sprite(550, 400, 'backs', this.cardBackTexture)
       .setScale(0.6)
-      .setInteractive();
+      .setInteractive()
+      .setVisible(false);
       
-    this.add.text(this.drawPileSprite.x, this.drawPileSprite.y - 80, 'DRAW', { fontSize: '20px', color: '#fff' }).setOrigin(0.5)
+    this.drawPileText = this.add.text(this.drawPileSprite.x, this.drawPileSprite.y - 80, 'DRAW', { fontSize: '20px', color: '#fff' })
+      .setOrigin(0.5)
+      .setVisible(false)
       
     this.drawPileSprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.gameState?.isPlayerTurn()) {
@@ -123,24 +134,29 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // Discard Zone
-    this.discardContainer = this.add.container(700, 400).setDepth(10);
-    const discardRect = this.add.rectangle(this.discardContainer.x, this.discardContainer.y, 84, 114, 0xff0000, 0.3)
+    this.discardContainer = this.add.container(700, 400).setDepth(10).setVisible(false);
+    this.discardRect = this.add.rectangle(this.discardContainer.x, this.discardContainer.y, 84, 114, 0xff0000, 0.3)
       .setOrigin(0.5)
-      .setDepth(2);
+      .setDepth(2)
+      .setVisible(false);
     this.discardZone = this.add.zone(this.discardContainer.x, this.discardContainer.y, 100, 130)
       .setDropZone()
       .setInteractive({ cursor: 'pointer' })
-      .setDepth(3);
-    this.add.text(this.discardContainer.x, this.discardContainer.y - 80, 'DISCARD', { fontSize: '20px', color: '#fff' }).setOrigin(0.5)
+      .setDepth(3)
+      .setVisible(false);
+    this.discardPileText = this.add.text(this.discardContainer.x, this.discardContainer.y - 80, 'DISCARD', { fontSize: '20px', color: '#fff' })
+      .setOrigin(0.5)
+      .setVisible(false)
     
     // Hand Container & Drop Zone
-    this.handContainer = this.add.container(600, 700).setDepth(10)
+    this.handContainer = this.add.container(600, 700).setDepth(10).setVisible(false)
     this.handContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, 1200, 200), Phaser.Geom.Rectangle.Contains)
 
-    const handDropZone = this.add.zone(this.handContainer.x, this.handContainer.y, 1200, 200)
+    this.handDropZone = this.add.zone(this.handContainer.x, this.handContainer.y, 1200, 200)
       .setDropZone()
       .setInteractive({ cursor: 'pointer' })
       .setOrigin(0.5)
+      .setVisible(false)
 
     // Drag events (same as before)
     this.input.on('dragstart', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Sprite) => {
@@ -202,7 +218,7 @@ export default class GameScene extends Phaser.Scene {
 
           this.gameState?.discardCardOnTable();
           this.gameState!.endTurn();
-        } else if (zone === handDropZone) {
+        } else if (zone === this.handDropZone) {
           // Keep in hand
           const dropX = pointer.x - this.handContainer.x;
           let insertIndex = this.getInsertIndexFromLocalX(dropX);
@@ -228,7 +244,7 @@ export default class GameScene extends Phaser.Scene {
         gameObject.removeInteractive();
         this.updateFromGameState();
         this.gameState!.endTurn();
-      } else if (zone === handDropZone) {
+      } else if (zone === this.handDropZone) {
         const dropX = pointer.x - this.handContainer.x;
         let insertIndex = this.getInsertIndexFromLocalX(dropX);
 
@@ -244,6 +260,18 @@ export default class GameScene extends Phaser.Scene {
 
   private updateFromGameState() {
     if (!this.gameState) return;
+    
+    // Show game components once game state is initialized
+    if (!this.drawPileSprite.visible) {
+      this.drawPileSprite.setVisible(true);
+      this.drawPileText.setVisible(true);
+      this.discardContainer.setVisible(true);
+      this.discardRect.setVisible(true);
+      this.discardZone.setVisible(true);
+      this.discardPileText.setVisible(true);
+      this.handContainer.setVisible(true);
+      this.handDropZone.setVisible(true);
+    }
     
     if (this.gameState!.cardOnTable === null) {
       this.pendingCardSprite?.destroy();
