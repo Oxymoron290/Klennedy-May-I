@@ -21,10 +21,15 @@ export interface MayIRequest {
   card: Card;
   responses: MayIResponse[];
   resolved: boolean;
-  penaltyCard: Card | null;
 
   resolve?: (accepted: boolean) => void;
   promise?: Promise<boolean>;
+  
+  voters: Player[];            // ordered voters (in order they must respond)
+  nextVoterIndex: number;      // who is expected to respond next
+  winner: Player | null;       // who ended up taking the card
+  deniedBy: Player | null;     // if someone denied, who
+  penaltyCard: Card | null;    // the penalty card for the winner (hidden by UI for others)
 }
 
 export interface MayIResponse {

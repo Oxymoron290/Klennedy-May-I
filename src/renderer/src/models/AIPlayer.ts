@@ -1,4 +1,4 @@
-import { Player, MayIRequest } from "./GameState";
+import { Player, Card, MayIRequest } from "./GameState";
 import { LocalGameState } from "./LocalGameState";
 
 export interface AIProfile {
@@ -52,46 +52,45 @@ export class AIPlayer {
     });
 
     this.game.onMayIRequest(req => {
-      if (req.player.id !== this.player.id) {
+      this.considerMayIRequest(req);
+    });
+    
+    this.game.onMayINextVoter((req, next) => {
+      if (next.id === this.player.id) {
         this.considerMayIRequest(req);
       }
     });
   }
 
   private async takeTurn() {
-    await this.delay(this.profile.thinkDelayMs);
-    await this.game.waitForNoPendingMayI();
+    let card: Card | null = null;
+    await this.takeAction(async () => {
+      // TODO: implement klennedy rules
 
-    // TODO: implement klennedy rules
+      const shouldDrawDiscard =
+        this.game.discardPile.length > 0 &&
+        Math.random() < this.profile.drawFromDiscardChance;
 
-    const shouldDrawDiscard =
-      this.game.discardPile.length > 0 &&
-      Math.random() < this.profile.drawFromDiscardChance;
+      card = shouldDrawDiscard
+        ? this.game.drawDiscard()
+        : this.game.drawCard();
+    });
 
-    const card = shouldDrawDiscard
-      ? this.game.drawDiscard()
-      : this.game.drawCard();
 
     if (!card) return;
 
-    await this.delay(this.profile.thinkDelayMs);
-    await this.game.waitForNoPendingMayI();
+    await this.takeAction(async () => { 
+      const index = Math.floor(Math.random() * (this.player.hand.length + 1));
+      this.game.playerTakesCardOnTable(index);
+    });
 
-    const index = Math.floor(Math.random() * (this.player.hand.length + 1));
-    this.player.hand.splice(index, 0, card);
+    await this.takeAction(async () => { 
+      const discardIndex = Math.floor(Math.random() * this.player.hand.length);
+      const discard = this.player.hand[discardIndex];
+      this.game.discard(discard);
+    });
 
-    await this.delay(this.profile.thinkDelayMs);
-    await this.game.waitForNoPendingMayI();
-
-    const discardIndex = Math.floor(Math.random() * this.player.hand.length);
-    const discard = this.player.hand[discardIndex];
-
-    this.game.discard(discard);
-
-    await this.delay(300);
-    await this.game.waitForNoPendingMayI();
-
-    await this.game.endTurn();
+    await this.takeAction(async () => { await this.game.endTurn();});
   }
 
   private async considerRequestingMayI() {
@@ -104,10 +103,50 @@ export class AIPlayer {
   }
 
   private async considerMayIRequest(request: MayIRequest) {
+    console.log(`AI ${this.player.name} considering May I request ${request.id}`);
+    // Must be eligible voter
+    const isVoter = request.voters.some(v => v.id === this.player.id);
+    if (!isVoter) {
+      console.log(`AI ${this.player.name} is not a voter for May I request ${request.id}`);
+      return;
+    }
+
+    // Already responded? Never try again.
+    if (request.responses.some(r => r.player.id === this.player.id)) {
+      console.log(`AI ${this.player.name} has already responded to May I request ${request.id}`);
+      return;
+    }
+
+    // Must be this player's turn in voting order
+    const expected = request.voters[request.nextVoterIndex];
+    if (!expected || expected.id !== this.player.id) {
+      console.log(`AI ${this.player.name} is not the expected voter for May I request ${request.id}`);
+      return;
+    }
+
+    // Now safe to respond
     await this.delay(this.profile.thinkDelayMs);
+
+    // Check again after delay in case state changed
+    if (request.responses.some(r => r.player.id === this.player.id)) {
+      console.log(`AI ${this.player.name} has already responded to May I request ${request.id} after delay`);
+      return;
+    }
+    const stillExpected = request.voters[request.nextVoterIndex];
+    if (!stillExpected || stillExpected.id !== this.player.id) {
+      console.log(`AI ${this.player.name} is no longer the expected voter for May I request ${request.id} after delay`);
+      return;
+    }
 
     const deny = Math.random() < this.profile.mayIDenyChance;
     this.game.respondToMayI(this.player, request, !deny);
+  }
+
+  private async takeAction(action: () => Promise<void>) {
+    await this.delay(this.profile.thinkDelayMs);
+    await this.game.waitForNoPendingMayI();
+
+    await action();
   }
 
   private delay(ms: number) {

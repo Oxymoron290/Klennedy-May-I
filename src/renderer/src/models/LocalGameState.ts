@@ -50,6 +50,7 @@ export class LocalGameState implements GameState {
   private onMayIRequestCallbacks: Array<(request: MayIRequest) => void> = [];
   private onMayIResponseCallbacks: Array<(request: MayIRequest, response: MayIResponse) => void> = [];
   private onMayIResolvedCallbacks: Array<(request: MayIRequest, accepted: boolean) => void> = [];
+  private onMayINextVoterCallbacks: Array<(request: MayIRequest, nextVoter: Player) => void> = [];
 
   constructor(decks: number = 3, totalPlayers: number = 5) {
     this.decks = decks;
@@ -95,6 +96,11 @@ export class LocalGameState implements GameState {
   onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void {
     this.onMayIResolvedCallbacks.push(callback);
   }
+
+  onMayINextVoter(callback: (request: MayIRequest, nextVoter: Player) => void): void {
+    this.onMayINextVoterCallbacks.push(callback);
+  }
+
 
   private opponentDraw(player: Player) {
     for (const cb of this.onOpponentDrawCallbacks) {
@@ -177,6 +183,33 @@ export class LocalGameState implements GameState {
     for (const cb of this.onMayIResolvedCallbacks) {
       cb(request, accepted);
     }
+  }
+  
+  private mayINextVoter(request: MayIRequest, nextVoter: Player) {
+    for (const cb of this.onMayINextVoterCallbacks) {
+      cb(request, nextVoter);
+    }
+  }
+
+  private getMayIVotersInOrder(requester: Player): Player[] {
+    const requesterIndex = this.players.findIndex(p => p.id === requester.id);
+    if (requesterIndex === -1) return [];
+
+    // If requester is the current player, everyone else votes (full circle)
+    if (requesterIndex === this.currentTurn) {
+      return this.players.filter(p => p.id !== requester.id);
+    }
+
+    // Otherwise, only players from currentTurn up to (but not including) requester vote.
+    const voters: Player[] = [];
+    let i = this.currentTurn;
+
+    while (i !== requesterIndex) {
+      voters.push(this.players[i]);
+      i = (i + 1) % this.totalPlayers;
+    }
+
+    return voters;
   }
   
   isPlayerTurn(player?: Player): boolean {
@@ -318,37 +351,61 @@ export class LocalGameState implements GameState {
       return false;
     }
 
+    let voters = this.getMayIVotersInOrder(player);
+
+    console.log('May I voters in order:', voters.map(v => v.name));
+
     const request: MayIRequest = {
       id: uuidv4(),
       player,
       card,
       responses: [],
       resolved: false,
+      voters,
+      nextVoterIndex: 0,
+      winner: null,
+      deniedBy: null,
       penaltyCard: null
     };
 
     this.mayIRequests.push(request);
     this.mayIRequest(request);
 
+    if (request.voters.length > 0) {
+      this.mayINextVoter(request, request.voters[0]);
+    }
+
     return await this.waitForMayIResolution(request);
   }
 
   respondToMayI(player: Player, request: MayIRequest, allow: boolean): void {
-    const req = this.mayIRequests.find(r => r === request);
+    const req = this.mayIRequests.find(r => r.id === request.id);
 
     if (!req) {
       console.log('May I request not found.');
       return;
     }
 
-    if(req.player.id === this.getCurrentPlayer()!.id) {
-      console.log('Player cannot respond to their own May I request.');
+    if (req.resolved) {
+      console.log('May I request already resolved.');
+      return;
+    }
+
+    const isEligible = req.voters.some(v => v.id === player.id);
+    if (!isEligible) {
+      console.log("Player is not an eligible voter for this May I.");
       return;
     }
 
     // Prevent duplicate responses
     if (req.responses.some(r => r.player.id === player.id)) {
       console.log('Player has already responded to this May I.');
+      return;
+    }
+    
+    const expected = req.voters[req.nextVoterIndex];
+    if (!expected || expected.id !== player.id) {
+      console.log(`Out of order May I response. Expected ${expected?.name}, got ${player.name}.`);
       return;
     }
 
@@ -360,9 +417,56 @@ export class LocalGameState implements GameState {
     req.responses.push(response);
     this.mayIResponse(req, response);
 
-    const eligibleVoters = this.players.filter(p => p.id !== req.player.id);
-    if (req.responses.length === eligibleVoters.length) {
-      this.mayIResolved(req);
+    if (!allow) {
+      this.resolveMayI(req, player, player);
+      return;
+    }
+
+    req.nextVoterIndex++;
+
+    if (req.nextVoterIndex < req.voters.length) {
+      const next = req.voters[req.nextVoterIndex];
+      this.mayINextVoter(req, next);
+    } else {
+      this.resolveMayI(req, req.player, null);
+    }
+  }
+
+  private resolveMayI(req: MayIRequest, winner: Player, deniedBy: Player | null) {
+    req.resolved = true;
+    req.winner = winner;
+    req.deniedBy = deniedBy;
+
+    const requesterWon = winner.id === req.player.id;
+
+    // Remove the requested card from discard pile (someone is taking it)
+    const cardIndex = this.discardPile.findIndex(c => c.guid === req.card.guid);
+    if (cardIndex !== -1) {
+      this.discardPile.splice(cardIndex, 1);
+    }
+
+    // Winner takes requested card
+    winner.hand.push(req.card);
+
+    // Winner takes penalty card
+    if (this.drawPile.length > 0) {
+      const penaltyCard = this.drawPile.pop()!;
+      winner.hand.push(penaltyCard);
+      req.penaltyCard = penaltyCard;
+    }
+
+    if (req.resolve) {
+      // your original meaning of "accepted" was requester success
+      req.resolve(requesterWon);
+    }
+
+    // Remove from active list
+    const idx = this.mayIRequests.findIndex(r => r.id === req.id);
+    if (idx !== -1) this.mayIRequests.splice(idx, 1);
+
+    // Fire callback: accepted = requesterWon
+    for (const cb of this.onMayIResolvedCallbacks) {
+      cb(req, requesterWon);
     }
   }
 
