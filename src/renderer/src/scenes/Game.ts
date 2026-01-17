@@ -3,6 +3,7 @@ import io, { Socket } from 'socket.io-client';
 import { LocalGameState } from '../models/LocalGameState';
 import { MultiplayerGameState } from '../models/MultiplayerGameState';
 import { Card, Player, GameState } from '../models/GameState';
+import { AIPlayer, EasyBot, HardBot } from "../models/AIPlayer";
 
 export default class GameScene extends Phaser.Scene {
   socket!: Socket;
@@ -36,10 +37,6 @@ export default class GameScene extends Phaser.Scene {
   preload() {
     this.load.atlasXML('cards', '/playingCards.png', '/playingCards.xml')
     this.load.atlasXML('backs', '/playingCardBacks.png', '/playingCardBacks.xml')
-  }
-
-  private drawTable() {
-    
   }
 
   create() {
@@ -77,6 +74,14 @@ export default class GameScene extends Phaser.Scene {
     localBtn.on('pointerdown', () => {
       this.gameState = new LocalGameState();
 
+      this.gameState.players.forEach((player, index) => {
+        if (!player.isHuman) {
+          const profile = index % 2 === 0 ? EasyBot : HardBot;
+          new AIPlayer(this.gameState as LocalGameState, player, profile);
+          player.name = `${profile.name} Bot ${index}`;
+        }
+      });
+
       this.gameState!.onOpponentDraw((player: Player) => {
         console.log(`${player.name} drew a card.`);
         this.animateOpponentDraw(player);
@@ -94,6 +99,17 @@ export default class GameScene extends Phaser.Scene {
         console.log(`It's now ${currentPlayer?.name}'s turn.`);
         this.updateFromGameState();
       });
+      this.gameState!.onMayIRequest((request) => {
+        console.log('May I request received:', request);
+      });
+      this.gameState!.onMayIResponse((request, response) => {
+        console.log('May I response received:', request, response);
+      });
+      this.gameState!.onMayIResolved((request, accepted) => {
+        console.log(`May I request ${accepted ? 'accepted' : 'denied'} for card:`, request.card);
+      });
+
+      this.gameState!.startGame();
 
       this.updateFromGameState();
       localBtn.destroy();
@@ -170,7 +186,8 @@ export default class GameScene extends Phaser.Scene {
       if (!card) return;
 
       this.draggedCardData = card;
-      this.originalIndex = this.gameState?.getPlayerHand().findIndex(c => c.guid === card.guid) ?? -1;
+      const player = this.gameState?.players.find(p => p.isPlayer);
+      this.originalIndex = player?.hand.findIndex(c => c.guid === card.guid) ?? -1;
       if (this.originalIndex === -1) return;
 
       gameObject.setAlpha(0.4);
@@ -248,8 +265,9 @@ export default class GameScene extends Phaser.Scene {
         const dropX = pointer.x - this.handContainer.x;
         let insertIndex = this.getInsertIndexFromLocalX(dropX);
 
-        this.gameState?.getPlayerHand().splice(this.originalIndex, 1);
-        this.gameState?.getPlayerHand().splice(insertIndex, 0, this.draggedCardData!);
+        const player = this.gameState!.players.find(p => p.isPlayer)!;
+        player.hand.splice(this.originalIndex, 1);
+        player.hand.splice(insertIndex, 0, this.draggedCardData!);
 
         console.log('Reordered to index:', insertIndex);
       }
@@ -283,7 +301,8 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // Human hand
-    this.renderHand(this.gameState.getPlayerHand());
+    const player = this.gameState!.players.find(p => p.isPlayer)!;
+    this.renderHand(player.hand);
 
     this.renderDiscardPile(this.gameState.discardPile);
 
@@ -325,9 +344,16 @@ export default class GameScene extends Phaser.Scene {
       if (index === discardPile.length - 1) {
         sprite.setInteractive({ draggable: true });
 
-        sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        sprite.on('pointerdown', async (pointer: Phaser.Input.Pointer) => {
           if (!this.gameState?.isPlayerTurn()) {
             console.log(`This will be a may I request for ${card.suit} ${card.rank}`);
+            const player = this.gameState!.players.find(p => p.isPlayer)!;
+            const accepted = await this.gameState?.mayI(player, card);
+            if (accepted) {
+              console.log('May I request accepted.');
+            } else {
+              console.log('May I request denied.');
+            }
             return;
           } else {
             const drawn = this.gameState?.drawDiscard();
@@ -493,10 +519,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private renderPlayerName() {
-    const player = this.gameState?.getPlayer();
+    const player = this.gameState?.players.find(p => p.isPlayer);
     if (!player) return;
 
-    const isPlayerTurn = this.gameState?.isPlayerTurn() ?? false;
+    const isPlayerTurn = this.gameState?.isPlayerTurn(player) ?? false;
     const backgroundColor = isPlayerTurn ? '#00ff00' : '#000000aa';
     const color = isPlayerTurn ? '#000' : '#fff';
 

@@ -1,5 +1,5 @@
 import { Socket } from 'socket.io-client'
-import { Card, Player, GameState } from './GameState'
+import { Card, Player, GameState, MayIRequest, MayIResponse } from './GameState'
 
 export class MultiplayerGameState implements GameState {
   private socket: Socket;
@@ -15,6 +15,9 @@ export class MultiplayerGameState implements GameState {
   onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null;
   onOpponentDrawFromDiscardCallback: ((player: Player, card: Card) => void) | null = null;
   onTurnAdvanceCallback: ((player: Player) => void) | null = null;
+  onMayIRequestCallback: ((request: MayIRequest) => void) | null = null;
+  onMayIResponseCallback: ((request: MayIRequest, response: MayIResponse) => void) | null = null;
+  onMayIResolvedCallback: ((request: MayIRequest, accepted: boolean) => void) | null = null;
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -26,6 +29,9 @@ export class MultiplayerGameState implements GameState {
 
     // Optional: request initial state
     this.socket.emit('requestGameState');
+  }
+  startGame(): void {
+    throw new Error('Method not implemented.');
   }
 
   onOpponentDraw(callback: (player: Player) => void): void {
@@ -46,6 +52,18 @@ export class MultiplayerGameState implements GameState {
   onTurnAdvance(callback: (player: Player) => void): void {
     this.onTurnAdvanceCallback = callback;
     callback(this.getCurrentPlayer()!);
+  }
+
+  onMayIRequest(callback: (request: MayIRequest) => void): void {
+    this.onMayIRequestCallback = callback;
+  }
+
+  onMayIResponse(callback: (request: MayIRequest, response: MayIResponse) => void): void {
+    this.onMayIResponseCallback = callback;
+  }
+
+  onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void {
+    this.onMayIResolvedCallback = callback;
   }
 
   private opponentDraw(player: Player) {
@@ -71,6 +89,47 @@ export class MultiplayerGameState implements GameState {
       this.onTurnAdvanceCallback(player);
     }
   }
+  
+  private mayIRequest(request: MayIRequest) {
+    if (this.onMayIRequestCallback) {
+      this.onMayIRequestCallback(request);
+    }
+  }
+
+  private mayIResponse(request: MayIRequest, response: MayIResponse) {
+    if (this.onMayIResponseCallback) {
+      this.onMayIResponseCallback(request, response);
+    }
+  }
+
+  private mayIResolved(request: MayIRequest) {
+    const accepted = request.responses.every(r => r.accepted);
+    console.log(`May I request ${accepted ? 'accepted' : 'denied'} for card:`, request.card);
+    
+    if (accepted) {
+      // Remove card from discard pile
+      const cardIndex = this.discardPile.findIndex(c => c.guid === request.card.guid);
+      if (cardIndex !== -1) {
+        this.discardPile.splice(cardIndex, 1);
+      }
+      
+      // Add card to requesting player's hand
+      request.player.hand.push(request.card);
+      
+      // Player must also draw a penalty card from draw pile
+      // TODO: Klennedy rule.
+      if (this.drawPile.length > 0) {
+        const penaltyCard = this.drawPile.pop()!;
+        request.player.hand.push(penaltyCard);
+        console.log(`${request.player.name} also drew penalty card:`, penaltyCard);
+      }
+    }
+
+    if (this.onMayIResolvedCallback) {
+      this.onMayIResolvedCallback(request, accepted);
+    }
+  }
+
 
   getPlayer(): Player | undefined {
     return this.players.find(p => p.isPlayer);
@@ -128,6 +187,10 @@ export class MultiplayerGameState implements GameState {
 
   discard(card: Card): void {
     this.socket.emit('discardCard', card);
+  }
+  
+  mayI(card: Card): void {
+    throw new Error('Method not implemented.');
   }
 
   discardCardOnTable(): void {

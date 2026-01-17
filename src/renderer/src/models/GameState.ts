@@ -13,6 +13,21 @@ export interface Player {
   isHuman: boolean;
 }
 
+export interface MayIRequest {
+  id: string;
+  player: Player;
+  card: Card;
+  responses: MayIResponse[];
+
+  resolve?: (accepted: boolean) => void;
+  promise?: Promise<boolean>;
+}
+
+export interface MayIResponse {
+  player: Player;
+  accepted: boolean;
+}
+
 type OpponentDraw = (player: Player) => void;
 type OpponentDiscard = (player: Player, card: Card) => void;
 type TurnAdvance = (player: Player) => void;
@@ -26,23 +41,25 @@ export interface GameState {
   cardOnTable: Card | null;
   drawnThisTurn: boolean;
 
+  startGame(): void;
   drawCard(): Card | null;
   drawDiscard(): Card | null;
   discard(card: Card): void;
-  getPlayer(): Player | undefined;
-  getPlayerHand(): Card[];
-  setPlayerHand(hand: Card[]): void;
-  pushPlayerHand(card: Card): void;
-  popPlayerHand(): Card | undefined;
+  mayI(player: Player, card: Card): void;
+  getCurrentPlayer(): Player | undefined;
+  getCurrentPlayerHand(): Card[];
+  isPlayerTurn(player?: Player): boolean;
   getOpponents(): Player[];
   
   onOpponentDraw(callback: OpponentDraw): void;
   onOpponentDiscard(callback: OpponentDiscard): void;
   onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void;
   onTurnAdvance(callback: TurnAdvance): void;
+  onMayIRequest(callback: (request: MayIRequest) => void): void;
+  onMayIResponse(callback: (request: MayIRequest, response: MayIResponse) => void): void;
+  onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void;
   //onOpponentFormedMeld(callback: (player: Player, meld: Card[]) => void): void;
   // onOpponentWentOut(callback: (player: Player) => void): void;
-  // onOpponnentMayI(callback: (player: Player, card: Card) => void): void;
   // onOpponentTookMayI(callback: (player: Player, card: Card) => void): void;
   // onOpponentAcceptedMayI(callback: (player: Player) => void): void;
   // Add more methods as needed: discard, meld, etc.
@@ -51,6 +68,4 @@ export interface GameState {
   playerTakesCardOnTable(index?: number): void;
 
   endTurn(): void;
-  isPlayerTurn(player?: Player): boolean;
-  getCurrentPlayer(): Player | undefined;
 }

@@ -1,4 +1,4 @@
-import { Card, Player, GameState } from './GameState'
+import { Card, Player, GameState, MayIRequest, MayIResponse } from './GameState'
 import { v4 as uuidv4 } from 'uuid';
 
 export class LocalGameState implements GameState {
@@ -9,6 +9,8 @@ export class LocalGameState implements GameState {
   discardPile: Card[] = [];
   currentTurn: number = 0;
 
+  mayIRequests: MayIRequest[] = [];
+
   cardOnTable: Card | null = null;
   drawnThisTurn: boolean = false;
   discardedThisTurn: boolean = false;
@@ -16,7 +18,10 @@ export class LocalGameState implements GameState {
   onOpponentDrawCallback: ((player: Player) => void) | null = null;
   onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null;
   onOpponentDrawFromDiscardCallback: ((player: Player, card: Card) => void) | null = null;
-  onTurnAdvanceCallback: ((player: Player) => void) | null = null;
+  private onTurnAdvanceCallbacks: Array<(player: Player) => void> = [];
+  onMayIRequestCallback: ((request: MayIRequest) => void) | null = null;
+  onMayIResponseCallback: ((request: MayIRequest, response: MayIResponse) => void) | null = null;
+  onMayIResolvedCallback: ((request: MayIRequest, accepted: boolean) => void) | null = null;
 
   constructor(decks: number = 3, totalPlayers: number = 5) {
     this.decks = decks;
@@ -28,22 +33,30 @@ export class LocalGameState implements GameState {
 
   onOpponentDraw(callback: (player: Player) => void): void {
     this.onOpponentDrawCallback = callback;
-    // callback(this.getCurrentPlayer()!);
   }
 
   onOpponentDiscard(callback: (player: Player, card: Card) => void): void {
     this.onOpponentDiscardCallback = callback;
-    // callback(this.getCurrentPlayer()!, this.cardOnTable!);
   }
 
   onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void {
     this.onOpponentDrawFromDiscardCallback = callback;
-    // callback(this.getCurrentPlayer()!, this.cardOnTable!);
   }
 
   onTurnAdvance(callback: (player: Player) => void): void {
-    this.onTurnAdvanceCallback = callback;
-    // callback(this.getCurrentPlayer()!);
+    this.onTurnAdvanceCallbacks.push(callback);
+  }
+
+  onMayIRequest(callback: (request: MayIRequest) => void): void {
+    this.onMayIRequestCallback = callback;
+  }
+
+  onMayIResponse(callback: (request: MayIRequest, response: MayIResponse) => void): void {
+    this.onMayIResponseCallback = callback;
+  }
+
+  onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void {
+    this.onMayIResolvedCallback = callback;
   }
 
   private opponentDraw(player: Player) {
@@ -65,40 +78,79 @@ export class LocalGameState implements GameState {
   }
 
   private turnAdvance(player: Player) {
-    if (this.onTurnAdvanceCallback) {
-      this.onTurnAdvanceCallback(player);
+    for (const cb of this.onTurnAdvanceCallbacks) {
+      cb(player);
     }
   }
 
-  getPlayer(): Player | undefined {
-    return this.players.find(p => p.isPlayer);
+  private mayIRequest(request: MayIRequest) {
+    if (this.onMayIRequestCallback) {
+      this.onMayIRequestCallback(request);
+    }
   }
 
-  getPlayerHand(): Card[] {
-    const player = this.getPlayer();
+  private waitForMayIResolution(request: MayIRequest): Promise<boolean> {
+    request.promise = new Promise<boolean>(resolve => {
+      request.resolve = resolve;
+    });
+
+    return request.promise;
+  }
+
+  private mayIResponse(request: MayIRequest, response: MayIResponse) {
+    if (this.onMayIResponseCallback) {
+      this.onMayIResponseCallback(request, response);
+    }
+  }
+
+  private mayIResolved(request: MayIRequest) {
+    const accepted = request.responses.every(r => r.accepted);
+    console.log(`May I request ${accepted ? 'accepted' : 'denied'} for card:`, request.card);
+    
+    if (accepted) {
+      // Remove card from discard pile
+      const cardIndex = this.discardPile.findIndex(c => c.guid === request.card.guid);
+      if (cardIndex !== -1) {
+        this.discardPile.splice(cardIndex, 1);
+      }
+      
+      // Add card to requesting player's hand
+      request.player.hand.push(request.card);
+      
+      // Player must also draw a penalty card from draw pile
+      // TODO: Klennedy rule.
+      if (this.drawPile.length > 0) {
+        const penaltyCard = this.drawPile.pop()!;
+        request.player.hand.push(penaltyCard);
+        console.log(`${request.player.name} also drew penalty card:`, penaltyCard);
+      }
+    }
+
+    if (request.resolve) {
+      request.resolve(accepted);
+    }
+
+    if (this.onMayIResolvedCallback) {
+      this.onMayIResolvedCallback(request, accepted);
+    }
+  }
+  
+  isPlayerTurn(player?: Player): boolean {
+    if(!player) {
+      const playerIndex = this.players.findIndex(p => p.isPlayer);
+      return this.currentTurn === playerIndex;
+    }
+    const playerIndex = this.players.findIndex(p => p.id === player.id);
+    return this.currentTurn === playerIndex;
+  }
+
+  getCurrentPlayer(): Player | undefined {
+    return this.players[this.currentTurn];
+  }
+
+  getCurrentPlayerHand(): Card[] {
+    const player = this.getCurrentPlayer();
     return player ? player.hand : [];
-  }
-
-  setPlayerHand(hand: Card[]): void {
-    const player = this.getPlayer();
-    if (player) {
-      player.hand = hand;
-    }
-  }
-
-  pushPlayerHand(card: Card): void {
-    const player = this.getPlayer();
-    if (player) {
-      player.hand.push(card);
-    }
-  }
-
-  popPlayerHand(): Card | undefined {
-    const player = this.getPlayer();
-    if (player) {
-      return player.hand.pop();
-    }
-    return undefined;
   }
 
   getOpponents(): Player[] {
@@ -107,6 +159,7 @@ export class LocalGameState implements GameState {
 
   private initializePlayers() {
     this.players.push({ id: uuidv4(), name: 'human', hand: [], isPlayer: true, isHuman: true });
+
     for (let i = 1; i < this.totalPlayers; i++) {
       this.players.push({ id: uuidv4(), name: `ai${i}`, hand: [], isPlayer: false, isHuman: false });
     }
@@ -141,6 +194,15 @@ export class LocalGameState implements GameState {
     this.discardPile.push(this.drawPile.pop()!);
   }
 
+  startGame(): void {
+    const current = this.getCurrentPlayer();
+    if (current) {
+      for (const cb of this.onTurnAdvanceCallbacks) {
+        cb(current);
+      }
+    }
+  }
+
   drawCard(): Card | null {
     if (this.drawPile.length === 0)
     {
@@ -154,6 +216,9 @@ export class LocalGameState implements GameState {
     const card = this.drawPile.pop()!;
     this.cardOnTable = card;
     this.drawnThisTurn = true;
+    if(!this.isPlayerTurn()) {
+      this.opponentDraw(this.getCurrentPlayer()!);
+    }
     return card;
   }
 
@@ -165,6 +230,9 @@ export class LocalGameState implements GameState {
     const card = this.discardPile.pop()!;
     this.cardOnTable = card;
     this.drawnThisTurn = true;
+    if(!this.isPlayerTurn()) {
+      this.opponentDrawFromDiscard(this.getCurrentPlayer()!, card);
+    }
     return card;
   }
 
@@ -194,7 +262,7 @@ export class LocalGameState implements GameState {
       if(this.cardOnTable.guid === card.guid) {
         this.cardOnTable = null;
       } else {
-        this.pushPlayerHand(this.cardOnTable);
+        this.getCurrentPlayerHand().push(this.cardOnTable);
         this.cardOnTable = null;
       }
     }
@@ -203,6 +271,51 @@ export class LocalGameState implements GameState {
     
     console.log('Discarded:', card);
     this.discardedThisTurn = true;
+
+    if(!this.isPlayerTurn()) {
+      this.opponentDiscard(this.getCurrentPlayer()!, card);
+    }
+  }
+
+  async mayI(player: Player, card: Card): Promise<boolean> {
+    if (card.guid !== this.discardPile[this.discardPile.length - 1].guid) {
+      console.log("Can only May I the top card of the discard pile.");
+      return false;
+    }
+
+    const request: MayIRequest = {
+      id: uuidv4(),
+      player,
+      card,
+      responses: []
+    };
+
+    this.mayIRequests.push(request);
+    this.mayIRequest(request);
+
+    return await this.waitForMayIResolution(request);
+  }
+
+  respondToMayI(player: Player, request: MayIRequest, allow: boolean): void {
+    const req = this.mayIRequests.find(r => r === request);
+
+    if (!req) {
+      console.log('May I request not found.');
+      return;
+    }
+
+    if(req.player.id === this.getCurrentPlayer()!.id) {
+      console.log('Player cannot respond to their own May I request.');
+      return;
+    }
+
+    const response: MayIResponse = {
+      player,
+      accepted: allow
+    };
+
+    req.responses.push(response);
+    this.mayIResponse(req, response);
   }
 
   discardCardOnTable(): void {
@@ -212,24 +325,20 @@ export class LocalGameState implements GameState {
   playerTakesCardOnTable(index?: number): void {
     if (this.cardOnTable) {
       if (index !== undefined) {
-        this.getPlayerHand().splice(index, 0, this.cardOnTable);
+        this.getCurrentPlayerHand().splice(index, 0, this.cardOnTable);
       } else {
-        this.pushPlayerHand(this.cardOnTable);
+        this.getCurrentPlayerHand().push(this.cardOnTable);
       }
       this.cardOnTable = null;
     }
   }
 
   async endTurn(): Promise<void> {
-    if(!this.drawnThisTurn || !this.discardedThisTurn) {
-      console.log('Must draw and discard before ending turn.');
+    if (!this.drawnThisTurn || !this.discardedThisTurn) {
+      console.log("Must draw and discard before ending turn.");
       return;
     }
-    if(this.cardOnTable !== null) {
-      console.log('Card is still on table. Deal with it before ending the turn.');
-      return;
-    }
-    console.log('Ending turn for local game state');
+
     this.currentTurn = (this.currentTurn + 1) % this.totalPlayers;
     this.drawnThisTurn = false;
     this.discardedThisTurn = false;
@@ -239,72 +348,5 @@ export class LocalGameState implements GameState {
     if (currentPlayer) {
       this.turnAdvance(currentPlayer);
     }
-
-    await this.executeNextAITurn();
-  }
-
-  private async executeNextAITurn() {
-    const currentPlayer = this.getCurrentPlayer();
-    if (currentPlayer && !currentPlayer.isHuman) {
-      await this.aiTurn();
-    }
-  }
-
-  private async aiTurn(): Promise<void> {
-    const currentPlayer = this.getCurrentPlayer();
-    if (!currentPlayer || currentPlayer.isHuman) return;
-
-    console.log(`AI ${currentPlayer.name} taking turn`);
-
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate thinking time
-
-    // AI draws a card - randomly decide to draw from discard pile or draw pile
-    const shouldDrawFromDiscard = this.discardPile.length > 0 && Math.random() > 0.5;
-    console.log(`AI ${currentPlayer.name} drawing from ${shouldDrawFromDiscard ? 'discard pile' : 'draw pile'}`);
-    const drawnCard = shouldDrawFromDiscard ? this.drawDiscard() : this.drawCard();
-    if (!drawnCard) return;
-    
-    if (shouldDrawFromDiscard) {
-      this.opponentDrawFromDiscard(currentPlayer, drawnCard);
-      console.log(`AI ${currentPlayer.name} drew from discard:`, drawnCard);
-    } else {
-      this.opponentDraw(currentPlayer);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate thinking time
-
-    // Place it randomly in hand
-    const randomIndex = Math.floor(Math.random() * (currentPlayer.hand.length + 1));
-    currentPlayer.hand.splice(randomIndex, 0, drawnCard);
-    this.cardOnTable = null;
-
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate thinking time
-
-    // TODO: Attempt to form melds here
-
-    // Pick a random card to discard
-    const discardIndex = Math.floor(Math.random() * currentPlayer.hand.length);
-    const cardToDiscard = currentPlayer.hand[discardIndex];
-    this.discard(cardToDiscard);
-    this.opponentDiscard(currentPlayer, cardToDiscard);
-
-    console.log(`AI ${currentPlayer.name} discarded:`, cardToDiscard);
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate thinking time
-
-    // End turn
-    this.endTurn();
-  }
-
-  isPlayerTurn(player?: Player): boolean {
-    if(!player) {
-      const playerIndex = this.players.findIndex(p => p.isPlayer);
-      return this.currentTurn === playerIndex;
-    }
-    const playerIndex = this.players.findIndex(p => p.id === player.id);
-    return this.currentTurn === playerIndex;
-  }
-
-  getCurrentPlayer(): Player | undefined {
-    return this.players[this.currentTurn];
   }
 }
