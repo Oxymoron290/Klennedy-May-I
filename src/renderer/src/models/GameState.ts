@@ -32,6 +32,8 @@ export interface MayIRequest {
   penaltyCard: Card | null;    // the penalty card for the winner (hidden by UI for others)
 
   timeoutHandle?: any;
+  timeoutStartedAt?: number;
+  timeoutDurationMs?: number;
 }
 
 export interface MayIResponse {

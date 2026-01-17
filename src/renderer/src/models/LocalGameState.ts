@@ -477,6 +477,9 @@ export class LocalGameState implements GameState {
   private startMayITimeout(req: MayIRequest) {
     this.clearMayITimeout(req);
 
+    req.timeoutStartedAt = Date.now();
+    req.timeoutDurationMs = this.mayIRequestExpirationMs;
+
     req.timeoutHandle = setTimeout(() => {
       if (req.resolved) return;
 
@@ -484,8 +487,6 @@ export class LocalGameState implements GameState {
       if (!expected) return;
 
       console.log(`May I timeout: ${expected.name} auto-accepts`);
-
-      // Auto accept on their behalf
       this.respondToMayI(expected, req, true);
     }, this.mayIRequestExpirationMs);
   }
@@ -495,6 +496,8 @@ export class LocalGameState implements GameState {
       clearTimeout(req.timeoutHandle);
       req.timeoutHandle = undefined;
     }
+    req.timeoutStartedAt = undefined;
+    req.timeoutDurationMs = undefined;
   }
 
   async waitForNoPendingMayI(): Promise<void> {

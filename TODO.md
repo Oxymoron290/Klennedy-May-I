@@ -9,6 +9,7 @@
 - [x] On first turn if you click the dicard pile the card disappears and is not in the discard pile or in your hand.
 - [ ] if an AI makes a May I request during a human turn the UI might disappear (especially at the start)
 - [x] Add a timeout for may I requests.
+- [ ] visual feedback for may i timeout
 - [ ] Klennedy penalty Rules
 - [ ] ability to cancel a "May I" request
 - [ ] ability to form melds

@@ -221,6 +221,17 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(80)
       .setVisible(false);
 
+    this.time.addEvent({
+      delay: 100,
+      loop: true,
+      callback: () => {
+        if (this.activeMayIRequest || this.activeIncomingMayI) {
+          this.renderMayIUI();
+          this.renderMayIOverlay();
+        }
+      }
+    });
+
     // Hand Container & Drop Zone
     this.handContainer = this.add.container(600, 700).setDepth(10).setVisible(false)
     this.handContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, 1200, 200), Phaser.Geom.Rectangle.Contains)
@@ -380,7 +391,10 @@ export default class GameScene extends Phaser.Scene {
     this.mayIContainer.removeAll(true);
     this.mayIContainer.setVisible(true);
 
-    const bg = this.add.rectangle(0, 0, 520, 120, 0x000000, 0.8).setOrigin(0.5);
+    const width = 520;
+    const height = 120;
+
+    const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.8).setOrigin(0.5);
     this.mayIContainer.add(bg);
 
     const text = this.add.text(-240, -45, `${req.player.name} requests ${req.card.suit} ${req.card.rank}`, {
@@ -420,6 +434,8 @@ export default class GameScene extends Phaser.Scene {
     } else {
       this.renderVoteStatus(req);
     }
+
+    this.renderMayITimer(req, width);
   }
 
   private renderVoteStatus(req: MayIRequest) {
@@ -571,6 +587,8 @@ export default class GameScene extends Phaser.Scene {
 
       this.mayIContainer.add(label);
 
+      this.renderMayITimer(request, width);
+
       return;
     }
 
@@ -659,6 +677,33 @@ export default class GameScene extends Phaser.Scene {
     this.activeMayIRequest = null;
     this.mayIContainer.setVisible(false);
     this.updateFromGameState();
+  }
+
+  private renderMayITimer(req: MayIRequest, width: number) {
+    const remaining = this.getMayITimeRemaining(req);
+    const total = req.timeoutDurationMs ?? 1;
+    const pct = Phaser.Math.Clamp(remaining / total, 0, 1);
+
+    const barWidth = width - 40;
+    const barHeight = 6;
+    const x = -width / 2 + 20;
+    const y = 50;
+
+    const bg = this.add.rectangle(x, y, barWidth, barHeight, 0x333333)
+      .setOrigin(0, 0.5);
+
+    const fg = this.add.rectangle(x, y, barWidth * pct, barHeight, 0x00ff88)
+      .setOrigin(0, 0.5);
+
+    this.mayIContainer.add(bg);
+    this.mayIContainer.add(fg);
+  }
+
+  private getMayITimeRemaining(req: MayIRequest): number {
+    if (!req.timeoutStartedAt || !req.timeoutDurationMs) return 0;
+
+    const elapsed = Date.now() - req.timeoutStartedAt;
+    return Math.max(0, req.timeoutDurationMs - elapsed);
   }
   
   private renderScoreboard() {
