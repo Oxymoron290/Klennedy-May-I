@@ -129,11 +129,21 @@
       color: #ff7f7f;
     }
 
+    .mayI-body {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .mayI-card {
+      transform: scale(0.6);
+      transform-origin: top left;
+    }
 
     .voters {
       display: flex;
+      flex-direction: column;
       gap: 6px;
-      margin: 6px 0;
     }
 
     .voter {
@@ -147,6 +157,18 @@
       background: #3355ff;
       color: white;
       border-color: #5577ff;
+    }
+
+    .voter.accepted {
+      background: #1f6f3a;
+      border-color: #2fa34f;
+      color: #eaffea;
+    }
+
+    .voter.denied {
+      background: #6f1f1f;
+      border-color: #a33f3f;
+      color: #ffeaea;
     }
 
   </style>
@@ -214,11 +236,12 @@
     await loadAtlas();
     game = new LocalGameState();
     game.players.forEach((player, index) => {
-      if (!player.isHuman) {
+      // if (!player.isHuman) {
+      player.isHuman = false;
         const profile = index % 2 === 0 ? EasyBot : HardBot;
         new AIPlayer(game, player, profile);
         player.name = `${profile.name} Bot ${index}`;
-      }
+      // }
     });
 
     game.onMayIRequest(() => render());
@@ -258,7 +281,7 @@
     renderPiles();
     renderPlayers();
   }
-    
+
   function renderMayI() {
     mayIDiv.innerHTML = "";
 
@@ -279,21 +302,27 @@
       const isActive = !req.resolved;
       if (isActive) reqDiv.classList.add("active");
 
+      // Header
       const header = document.createElement("strong");
       header.textContent = `Request from ${req.player.name}`;
       reqDiv.appendChild(header);
 
       reqDiv.appendChild(document.createElement("br"));
 
-      const cardRow = document.createElement("div");
-      cardRow.textContent = "Card:";
-      reqDiv.appendChild(cardRow);
+      // --- BODY LAYOUT (card left, voters right) ---
+      const body = document.createElement("div");
+      body.className = "mayI-body";
+
+      // Left side: card
+      const cardWrapper = document.createElement("div");
+      cardWrapper.className = "mayI-card";
 
       const cardDiv = document.createElement("div");
       cardDiv.className = "card";
       applyCardStyle(cardDiv, req.card);
-      reqDiv.appendChild(cardDiv);
+      cardWrapper.appendChild(cardDiv);
 
+      // Right side: voters column
       const votersDiv = document.createElement("div");
       votersDiv.className = "voters";
 
@@ -301,18 +330,32 @@
         const span = document.createElement("div");
         span.className = "voter";
 
+        // Highlight current voter (still works)
         if (index === req.nextVoterIndex && !req.resolved) {
           span.classList.add("current");
+        }
+
+        // Check if this voter has already responded
+        const response = req.responses.find(r => r.player.id === voter.id);
+
+        if (response) {
+          if (response.accepted) {
+            span.classList.add("accepted");
+          } else {
+            span.classList.add("denied");
+          }
         }
 
         span.textContent = voter.name;
         votersDiv.appendChild(span);
       });
 
-      reqDiv.appendChild(votersDiv);
+      body.appendChild(cardWrapper);
+      body.appendChild(votersDiv);
+      reqDiv.appendChild(body);
 
+      // --- Approve / Deny buttons ---
       const human = game.players.find(p => p.isHuman);
-
       const currentVoter = req.voters[req.nextVoterIndex];
 
       if (
@@ -337,6 +380,7 @@
         reqDiv.appendChild(deny);
       }
 
+      // --- Resolved status ---
       if (req.resolved) {
         const result = document.createElement("div");
         result.style.marginTop = "6px";
@@ -355,6 +399,7 @@
 
     mayIDiv.appendChild(wrapper);
   }
+
 
   function renderResolvedMayI() {
     resolvedDiv.innerHTML = "";
