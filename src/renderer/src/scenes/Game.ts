@@ -34,7 +34,6 @@ export default class GameScene extends Phaser.Scene {
   private activeMayIRequest: any = null;
   private mayIResultMode: boolean = false;
   private activeIncomingMayI: MayIRequest | null = null;
-  private hasRespondedToIncoming = false;
 
   constructor() {
     super({ key: 'GameScene' })
@@ -121,7 +120,6 @@ export default class GameScene extends Phaser.Scene {
           this.renderMayIUI();
         } else {
           this.activeIncomingMayI = req;
-          this.hasRespondedToIncoming = false;
           this.renderMayIOverlay();
         }
       });
@@ -132,6 +130,11 @@ export default class GameScene extends Phaser.Scene {
         }
         
         if (this.activeIncomingMayI) {
+          this.renderMayIOverlay();
+        }
+      });
+      this.gameState!.onMayINextVoter((req, nextVoter) => {
+        if (this.activeIncomingMayI?.id === req.id) {
           this.renderMayIOverlay();
         }
       });
@@ -393,26 +396,37 @@ export default class GameScene extends Phaser.Scene {
     const cardSprite = this.add.sprite(-200, 10, "cards", this.getFrameName(req.card))
       .setScale(0.5);
     this.mayIContainer.add(cardSprite);
-
     const me = this.gameState!.players.find(p => p.isPlayer)!;
-    const myVote = req.responses.find(r => r.player.id === me.id);
 
-    if (!this.hasRespondedToIncoming) {
+    const isEligible = req.voters.some(v => v.id === me.id);
+    const hasResponded = req.responses.some(r => r.player.id === me.id);
+    const expected = req.voters[req.nextVoterIndex];
+    const isMyTurn = expected?.id === me.id;
+
+    if (!isMyTurn) {
+      console.log(`It's not your turn to vote on May I request ${me.id} != ${expected?.id}`);
+      const waiting = this.add.text(80, 10, "Waiting for other players...", {
+        fontSize: "14px",
+        color: "#cccccc"
+      });
+      this.mayIContainer.add(waiting);
+    } else {
+      console.log("It's your turn to vote on May I request");
+    }
+
+    if (isEligible && !hasResponded && isMyTurn) {
       const accept = this.add.text(80, 10, "ACCEPT", { fontSize: "18px", backgroundColor: "#00aa00" })
         .setInteractive();
+
       const deny = this.add.text(180, 10, "DENY", { fontSize: "18px", backgroundColor: "#aa0000" })
         .setInteractive();
 
       accept.on("pointerdown", () => {
-        this.hasRespondedToIncoming = true;
         this.gameState!.respondToMayI(me, req, true);
-        this.renderMayIOverlay();
       });
 
       deny.on("pointerdown", () => {
-        this.hasRespondedToIncoming = true;
         this.gameState!.respondToMayI(me, req, false);
-        this.renderMayIOverlay();
       });
 
       this.mayIContainer.add(accept);
@@ -518,7 +532,6 @@ export default class GameScene extends Phaser.Scene {
     this.activeIncomingMayI = null;
     this.activeMayIRequest = null;
     this.mayIResultMode = false;
-    this.hasRespondedToIncoming = false;
     this.mayIContainer.removeAll(true);
     this.mayIContainer.setVisible(false);
   }

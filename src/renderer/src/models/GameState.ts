@@ -69,6 +69,7 @@ export interface GameState {
   onMayIRequest(callback: (request: MayIRequest) => void): void;
   onMayIResponse(callback: (request: MayIRequest, response: MayIResponse) => void): void;
   onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void;
+  onMayINextVoter(callback: (request: MayIRequest, nextVoter: Player) => void): void;
   //onOpponentFormedMeld(callback: (player: Player, meld: Card[]) => void): void;
   // onOpponentWentOut(callback: (player: Player) => void): void;
   // onOpponentTookMayI(callback: (player: Player, card: Card) => void): void;

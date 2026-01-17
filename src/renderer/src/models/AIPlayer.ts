@@ -51,10 +51,6 @@ export class AIPlayer {
       this.considerRequestingMayI();
     });
 
-    this.game.onMayIRequest(req => {
-      this.considerMayIRequest(req);
-    });
-    
     this.game.onMayINextVoter((req, next) => {
       if (next.id === this.player.id) {
         this.considerMayIRequest(req);
@@ -63,34 +59,34 @@ export class AIPlayer {
   }
 
   private async takeTurn() {
-    let card: Card | null = null;
-    await this.takeAction(async () => {
-      // TODO: implement klennedy rules
+    await this.delay(300);
+    await this.game.waitForNoPendingMayI();
+    // TODO: implement klennedy rules
 
-      const shouldDrawDiscard =
-        this.game.discardPile.length > 0 &&
-        Math.random() < this.profile.drawFromDiscardChance;
+    const shouldDrawDiscard =
+      this.game.discardPile.length > 0 &&
+      Math.random() < this.profile.drawFromDiscardChance;
 
-      card = shouldDrawDiscard
-        ? this.game.drawDiscard()
-        : this.game.drawCard();
-    });
-
-
+    const card = shouldDrawDiscard
+      ? this.game.drawDiscard()
+      : this.game.drawCard();
     if (!card) return;
 
-    await this.takeAction(async () => { 
-      const index = Math.floor(Math.random() * (this.player.hand.length + 1));
-      this.game.playerTakesCardOnTable(index);
-    });
+    await this.delay(this.profile.thinkDelayMs);
+    await this.game.waitForNoPendingMayI();
+    const index = Math.floor(Math.random() * (this.player.hand.length + 1));
+    this.game.playerTakesCardOnTable(index);
 
-    await this.takeAction(async () => { 
-      const discardIndex = Math.floor(Math.random() * this.player.hand.length);
-      const discard = this.player.hand[discardIndex];
-      this.game.discard(discard);
-    });
-
-    await this.takeAction(async () => { await this.game.endTurn();});
+    await this.delay(this.profile.thinkDelayMs);
+    await this.game.waitForNoPendingMayI();
+    const discardIndex = Math.floor(Math.random() * this.player.hand.length);
+    const discard = this.player.hand[discardIndex];
+    this.game.discard(discard);
+    
+    
+    await this.delay(this.profile.thinkDelayMs);
+    await this.game.waitForNoPendingMayI();
+    await this.game.endTurn();
   }
 
   private async considerRequestingMayI() {
@@ -142,12 +138,6 @@ export class AIPlayer {
     this.game.respondToMayI(this.player, request, !deny);
   }
 
-  private async takeAction(action: () => Promise<void>) {
-    await this.delay(this.profile.thinkDelayMs);
-    await this.game.waitForNoPendingMayI();
-
-    await action();
-  }
 
   private delay(ms: number) {
     return new Promise(res => setTimeout(res, ms));
