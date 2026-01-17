@@ -12,7 +12,8 @@ export class MultiplayerGameState implements GameState {
   drawnThisTurn: boolean = false;
   
   onOpponentDrawCallback: ((player: Player) => void) | null = null;
-  onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null
+  onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null;
+  onOpponentDrawFromDiscardCallback: ((player: Player, card: Card) => void) | null = null;
   onTurnAdvanceCallback: ((player: Player) => void) | null = null;
 
   constructor(socket: Socket) {
@@ -37,6 +38,11 @@ export class MultiplayerGameState implements GameState {
     callback(this.getCurrentPlayer()!, this.cardOnTable!);
   }
 
+  onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void {
+    this.onOpponentDrawFromDiscardCallback = callback;
+    // callback(this.getCurrentPlayer()!, this.cardOnTable!);
+  }
+
   onTurnAdvance(callback: (player: Player) => void): void {
     this.onTurnAdvanceCallback = callback;
     callback(this.getCurrentPlayer()!);
@@ -54,6 +60,12 @@ export class MultiplayerGameState implements GameState {
     }
   }
 
+  private opponentDrawFromDiscard(player: Player, card: Card) {
+    if (this.onOpponentDrawFromDiscardCallback) {
+      this.onOpponentDrawFromDiscardCallback(player, this.cardOnTable!);
+    }
+  }
+  
   private turnAdvance(player: Player) {
     if (this.onTurnAdvanceCallback) {
       this.onTurnAdvanceCallback(player);

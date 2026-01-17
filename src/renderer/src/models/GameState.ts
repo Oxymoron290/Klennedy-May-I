@@ -2,6 +2,7 @@ export interface Card {
   suit: 'spades' | 'hearts' | 'diamonds' | 'clubs';
   rank: number; // 1=A, 2-10, 11=J, 12=Q, 13=K
   guid: string;
+  rotation?: number;
 }
 
 export interface Player {
@@ -37,7 +38,13 @@ export interface GameState {
   
   onOpponentDraw(callback: OpponentDraw): void;
   onOpponentDiscard(callback: OpponentDiscard): void;
+  onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void;
   onTurnAdvance(callback: TurnAdvance): void;
+  //onOpponentFormedMeld(callback: (player: Player, meld: Card[]) => void): void;
+  // onOpponentWentOut(callback: (player: Player) => void): void;
+  // onOpponnentMayI(callback: (player: Player, card: Card) => void): void;
+  // onOpponentTookMayI(callback: (player: Player, card: Card) => void): void;
+  // onOpponentAcceptedMayI(callback: (player: Player) => void): void;
   // Add more methods as needed: discard, meld, etc.
 
   discardCardOnTable(): void;

@@ -14,7 +14,8 @@ export class LocalGameState implements GameState {
   discardedThisTurn: boolean = false;
   
   onOpponentDrawCallback: ((player: Player) => void) | null = null;
-  onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null
+  onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null;
+  onOpponentDrawFromDiscardCallback: ((player: Player, card: Card) => void) | null = null;
   onTurnAdvanceCallback: ((player: Player) => void) | null = null;
 
   constructor(decks: number = 3, totalPlayers: number = 5) {
@@ -27,17 +28,22 @@ export class LocalGameState implements GameState {
 
   onOpponentDraw(callback: (player: Player) => void): void {
     this.onOpponentDrawCallback = callback;
-    callback(this.getCurrentPlayer()!);
+    // callback(this.getCurrentPlayer()!);
   }
 
   onOpponentDiscard(callback: (player: Player, card: Card) => void): void {
     this.onOpponentDiscardCallback = callback;
-    callback(this.getCurrentPlayer()!, this.cardOnTable!);
+    // callback(this.getCurrentPlayer()!, this.cardOnTable!);
+  }
+
+  onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void {
+    this.onOpponentDrawFromDiscardCallback = callback;
+    // callback(this.getCurrentPlayer()!, this.cardOnTable!);
   }
 
   onTurnAdvance(callback: (player: Player) => void): void {
     this.onTurnAdvanceCallback = callback;
-    callback(this.getCurrentPlayer()!);
+    // callback(this.getCurrentPlayer()!);
   }
 
   private opponentDraw(player: Player) {
@@ -46,6 +52,12 @@ export class LocalGameState implements GameState {
     }
   }
 
+  private opponentDrawFromDiscard(player: Player, card: Card) {
+    if (this.onOpponentDrawFromDiscardCallback) {
+      this.onOpponentDrawFromDiscardCallback(player, this.cardOnTable!);
+    }
+  }
+  
   private opponentDiscard(player: Player, card: Card) {
     if (this.onOpponentDiscardCallback) {
       this.onOpponentDiscardCallback(player, card);

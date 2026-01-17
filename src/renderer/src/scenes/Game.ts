@@ -8,6 +8,7 @@ export default class GameScene extends Phaser.Scene {
   socket!: Socket;
   roomId: string = 'test';
   cardBackTexture: string = 'cardBack_blue2.png';
+  wandaMode: boolean = true;
   gameState!: GameState | null;
 
   handContainer!: Phaser.GameObjects.Container;
@@ -114,25 +115,24 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // Discard Zone
-    this.discardContainer = this.add.container(650, 400).setDepth(10);
+    this.discardContainer = this.add.container(700, 400).setDepth(10);
     const discardRect = this.add.rectangle(this.discardContainer.x, this.discardContainer.y, 84, 114, 0xff0000, 0.3)
       .setOrigin(0.5)
-      .setDepth(1)
+      .setDepth(2);
     this.discardZone = this.add.zone(this.discardContainer.x, this.discardContainer.y, 100, 130)
       .setDropZone()
       .setInteractive({ cursor: 'pointer' })
-      .setDepth(2)
+      .setDepth(3);
     this.add.text(this.discardContainer.x, this.discardContainer.y - 80, 'DISCARD', { fontSize: '20px', color: '#fff' }).setOrigin(0.5)
 
     // Hand Container & Drop Zone
     this.handContainer = this.add.container(600, 700).setDepth(10)
     this.handContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, 1200, 200), Phaser.Geom.Rectangle.Contains)
 
-    const handDropZone = this.add.zone(600, 700, 1200, 200)
+    const handDropZone = this.add.zone(this.handContainer.x, this.handContainer.y, 1200, 200)
       .setDropZone()
       .setInteractive({ cursor: 'pointer' })
       .setOrigin(0.5)
-    handDropZone.setInteractive(new Phaser.Geom.Rectangle(-600, -100, 1200, 200), Phaser.Geom.Rectangle.Contains)
 
     // Drag events (same as before)
     this.input.on('dragstart', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Sprite) => {
@@ -272,11 +272,28 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private renderDiscardPile(discardPile: Card[]) {
-    const cDiscard = discardPile[discardPile.length - 1];
-    if (!cDiscard) return;
-    this.add.sprite(this.discardZone.x, this.discardZone.y, 'cards', this.getFrameName(cDiscard))
-      .setScale(0.6)
-      .setDepth(5);
+    this.discardContainer.removeAll(true);
+    discardPile.forEach((card, index) => {
+      const frameName = this.getFrameName(card);
+      const offsetX = index * 0.3;
+      if(this.wandaMode) {
+        if(!card.rotation) {
+          card.rotation = Math.random() * Math.PI * 2;
+        }
+      }
+      this.discardContainer.add(
+        this.add.sprite(offsetX, offsetX, 'cards', frameName)
+          .setScale(0.6)
+          .setRotation(card.rotation || 0)
+          .setDepth(5 + index)
+      );
+    });
+
+    // const cDiscard = discardPile[discardPile.length - 1];
+    // if (!cDiscard) return;
+    // this.add.sprite(this.discardZone.x, this.discardZone.y, 'cards', this.getFrameName(cDiscard))
+    //   .setScale(0.6)
+    //   .setDepth(5);
   }
 
   private renderOpponentHands() {
