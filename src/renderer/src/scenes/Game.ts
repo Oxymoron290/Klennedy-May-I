@@ -327,7 +327,7 @@ export default class GameScene extends Phaser.Scene {
 
         sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
           if (!this.gameState?.isPlayerTurn()) {
-            console.log('This will be a may I request.');
+            console.log(`This will be a may I request for ${card.suit} ${card.rank}`);
             return;
           } else {
             const drawn = this.gameState?.drawDiscard();
