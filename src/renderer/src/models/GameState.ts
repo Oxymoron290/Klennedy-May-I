@@ -21,7 +21,7 @@ export interface MayIRequest {
   card: Card;
   responses: MayIResponse[];
   resolved: boolean;
-  peanaltyCard: Card | null;
+  penaltyCard: Card | null;
 
   resolve?: (accepted: boolean) => void;
   promise?: Promise<boolean>;

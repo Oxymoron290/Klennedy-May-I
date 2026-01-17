@@ -2,9 +2,11 @@
 - [x] Scoreboard
 - [ ] ability to form melds
 - [x] ability to "May I"
-- [ ] pending "May I" visualization
-- [ ] if the request is approved I need to animate the penalty card being added to the hand along with the requested card.
+- [x] pending own "May I" request visualization
+- [ ] ability to cancel a "May I" request
+- [ ] pending opponent "May I" request visualization
 - [ ] ability to reject or accept a "May I"
+- [ ] Klennedy penalty Rules
 
 - [ ] Multiplayer
 

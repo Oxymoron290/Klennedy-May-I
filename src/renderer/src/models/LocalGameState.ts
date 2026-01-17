@@ -159,7 +159,7 @@ export class LocalGameState implements GameState {
       if (this.drawPile.length > 0) {
         const penaltyCard = this.drawPile.pop()!;
         request.player.hand.push(penaltyCard);
-        request.peanaltyCard = penaltyCard;
+        request.penaltyCard = penaltyCard;
         console.log(`${request.player.name} also drew penalty card:`, penaltyCard);
       }
     }
@@ -324,7 +324,7 @@ export class LocalGameState implements GameState {
       card,
       responses: [],
       resolved: false,
-      peanaltyCard: null
+      penaltyCard: null
     };
 
     this.mayIRequests.push(request);

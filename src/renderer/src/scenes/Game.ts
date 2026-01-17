@@ -32,6 +32,7 @@ export default class GameScene extends Phaser.Scene {
   private opponentNameTexts: Phaser.GameObjects.Text[] = [];
   private pendingCardSprite: Phaser.GameObjects.Sprite | null = null;
   private activeMayIRequest: any = null;
+  private mayIResultMode: boolean = false;
 
   constructor() {
     super({ key: 'GameScene' })
@@ -134,21 +135,27 @@ export default class GameScene extends Phaser.Scene {
         }
       });
 
-      this.gameState!.onMayIResolved((req, accepted) => {
-        if (this.activeMayIRequest?.id !== req.id) return;
+      this.gameState!.onMayIResolved((request, accepted) => {
+        if (this.activeMayIRequest?.id !== request.id) return;
 
-        // Re-render one last time to ensure final votes are visible
-        this.renderMayIUI();
-
-        if (accepted) {
-          this.animateMayISuccess(req);
-        } else {
-          // Denied, keep visible for a moment
+        if (!accepted) {
+          // existing behavior: show denied for 2s
+          this.renderMayIUI();
           this.time.delayedCall(2000, () => {
             this.activeMayIRequest = null;
             this.mayIContainer.setVisible(false);
           });
+          return;
         }
+
+        // Accepted path: switch to result mode
+        this.mayIResultMode = true;
+        this.renderMayIUI();
+
+        // Let them hover in box
+        this.time.delayedCall(1000, () => {
+          this.animateMayIResultCards(request);
+        });
       });
 
       this.gameState!.startGame();
@@ -366,25 +373,58 @@ export default class GameScene extends Phaser.Scene {
     if (!this.activeMayIRequest) return;
 
     const request = this.activeMayIRequest;
-    const card = request.card;
 
     this.mayIContainer.removeAll(true);
     this.mayIContainer.setVisible(true);
 
-    // Background box
     const width = 520;
     const height = 120;
+
     const bg = this.add.rectangle(-width/2, -height/2, width, height, 0x000000, 0.6)
-      .setOrigin(0, 0);
-    bg.setStrokeStyle(2, 0xffffff, 0.2);
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0xffffff, 0.2);
     this.mayIContainer.add(bg);
 
-    // Requested card (left side)
-    const cardSprite = this.add.sprite(-width/2 + 60, 0, 'cards', this.getFrameName(card))
-      .setScale(0.5);
-    this.mayIContainer.add(cardSprite);
+    // Always show requested card on left
+    const requestedSprite = this.add.sprite(
+      -width/2 + 60,
+      0,
+      'cards',
+      this.getFrameName(request.card)
+    ).setScale(0.5);
 
-    // Eligible voters (everyone except requester)
+    this.mayIContainer.add(requestedSprite);
+
+    if (this.mayIResultMode) {
+      console.log('Rendering May I result mode');
+      console.log(request.penaltyCard);
+      // RESULT MODE: show penalty card next to it
+      if (request.penaltyCard) {
+        const penaltySprite = this.add.sprite(
+          -width/2 + 140,
+          0,
+          'cards',
+          this.getFrameName(request.penaltyCard)
+        ).setScale(0.5);
+
+        this.mayIContainer.add(penaltySprite);
+      }
+
+      const label = this.add.text(0, 40, 'Granted', {
+        fontSize: '14px',
+        color: '#00ff88'
+      }).setOrigin(0.5);
+
+      this.mayIContainer.add(label);
+
+      return;
+    }
+
+    // Otherwise render normal voting UI
+    this.renderMayIVoters(request, width);
+  }
+
+  private renderMayIVoters(request: any, width: number) {
     const voters = this.gameState!.players.filter(p => p.id !== request.player.id);
 
     const startX = -width/2 + 130;
@@ -392,20 +432,14 @@ export default class GameScene extends Phaser.Scene {
 
     voters.forEach((player, i) => {
       const x = startX + i * spacing;
-
       const response = request.responses.find((r: any) => r.player.id === player.id);
 
       let color = '#888';
       let status = 'Waiting';
 
       if (response) {
-        if (response.accepted) {
-          color = '#00ff00';
-          status = 'Allow';
-        } else {
-          color = '#ff4444';
-          status = 'Deny';
-        }
+        color = response.accepted ? '#00ff00' : '#ff4444';
+        status = response.accepted ? 'Allow' : 'Deny';
       }
 
       const plate = this.add.rectangle(x, -20, 80, 28, 0x111111, 0.8)
@@ -426,77 +460,53 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  private animateMayISuccess(request: any) {
-    const playerHandPos = new Phaser.Math.Vector2(
-      this.handContainer.x,
-      this.handContainer.y
+  private animateMayIResultCards(request: any) {
+    const startX = this.mayIContainer.x - 200;
+    const startY = this.mayIContainer.y;
+
+    const cards = [
+      request.card,
+      request.penaltyCard
+    ].filter(Boolean);
+
+    const sprites = cards.map((card, i) =>
+      this.add.sprite(
+        startX + i * 80,
+        startY,
+        'cards',
+        this.getFrameName(card)
+      )
+        .setScale(0.5)
+        .setDepth(200)
     );
 
-    const requestedFrame = this.getFrameName(request.card);
-    const penaltyFrame = request.penaltyCard
-      ? this.getFrameName(request.penaltyCard)
-      : null;
+    sprites.forEach((sprite, i) => {
+      this.tweens.add({
+        targets: sprite,
+        x: this.handContainer.x + i * 40,
+        y: this.handContainer.y,
+        scale: 0.4,
+        duration: 600,
+        ease: 'Back.easeOut',
+        delay: i * 120,
+        onComplete: () => {
+          sprite.destroy();
 
-    // 1. Animate requested card from discard pile
-    const requestedSprite = this.add.sprite(
-      this.discardZone.x,
-      this.discardZone.y,
-      "cards",
-      requestedFrame
-    )
-      .setScale(0.6)
-      .setDepth(100);
-
-    this.tweens.add({
-      targets: requestedSprite,
-      x: playerHandPos.x,
-      y: playerHandPos.y,
-      scale: 0.4,
-      duration: 500,
-      ease: "Cubic.easeOut",
-      onComplete: () => {
-        requestedSprite.destroy();
-
-        // 2. Animate penalty card from draw pile (if present)
-        if (penaltyFrame) {
-          this.animatePenaltyCard(penaltyFrame);
-        } else {
-          this.finishMayIAnimation();
+          if (i === sprites.length - 1) {
+            this.finishMayIAnimation();
+          }
         }
-      }
-    });
-  }
-
-  private animatePenaltyCard(frameName: string) {
-    const penaltySprite = this.add.sprite(
-      this.drawPileSprite.x,
-      this.drawPileSprite.y,
-      "cards",
-      frameName
-    )
-      .setScale(0.6)
-      .setDepth(100);
-
-    this.tweens.add({
-      targets: penaltySprite,
-      x: this.handContainer.x,
-      y: this.handContainer.y,
-      scale: 0.4,
-      duration: 500,
-      ease: "Cubic.easeOut",
-      onComplete: () => {
-        penaltySprite.destroy();
-        this.finishMayIAnimation();
-      }
+      });
     });
   }
 
   private finishMayIAnimation() {
+    this.mayIResultMode = false;
     this.activeMayIRequest = null;
     this.mayIContainer.setVisible(false);
     this.updateFromGameState();
   }
-
+  
   private renderScoreboard() {
     if (!this.gameState) return;
 
