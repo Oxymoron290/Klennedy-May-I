@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Rummy Debugger</title>
+
+  <style>
+    body {
+      font-family: monospace;
+      background: #111;
+      color: #ddd;
+      padding: 16px;
+    }
+
+    .player {
+      border: 1px solid #333;
+      padding: 8px;
+      margin-bottom: 12px;
+    }
+
+    .player.current {
+      border-color: gold;
+      background: #1a1a1a;
+    }
+
+    .hand {
+      display: flex;
+      /* flex-wrap: wrap; */
+      gap: 4px;
+      transform: scale(0.6);
+      transform-origin: top left;
+    }
+
+    .card {
+      display: inline-block;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.6);
+      cursor: pointer;
+    }
+
+    .table-area {
+      border: 1px solid #333;
+      padding: 8px;
+      margin: 8px 0;
+    }
+
+    .table-cards {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      transform: scale(0.6);
+      transform-origin: top left;
+    }
+
+
+    .piles {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 16px;
+    }
+
+    .pile {
+      border: 1px solid #333;
+      padding: 8px;
+    }
+
+    .pile-cards {
+      display: flex;
+      gap: 4px;
+      transform: scale(0.6);
+      transform-origin: top left;
+    }
+
+
+    pre {
+      background: #000;
+      padding: 12px;
+      max-height: 400px;
+      overflow: auto;
+    }
+
+    button {
+      margin-right: 8px;
+    }
+
+    .mayI {
+      border: 1px solid #333;
+      padding: 8px;
+      margin-bottom: 16px;
+    }
+
+    .mayI-request {
+      border: 1px solid #222;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+
+    .mayI-request.active {
+      border-color: gold;
+      background: #222;
+    }
+
+    .resolved {
+      border: 1px solid #333;
+      padding: 8px;
+      margin-bottom: 16px;
+      background: #111;
+    }
+
+    .resolved-item {
+      border-bottom: 1px solid #222;
+      padding: 4px 0;
+      font-size: 12px;
+    }
+
+    .resolved-item:last-child {
+      border-bottom: none;
+    }
+
+    .resolved-item span {
+      opacity: 0.8;
+    }
+
+    .resolved-accepted {
+      color: #7fdc7f;
+    }
+
+    .resolved-denied {
+      color: #ff7f7f;
+    }
+
+
+    .voters {
+      display: flex;
+      gap: 6px;
+      margin: 6px 0;
+    }
+
+    .voter {
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #111;
+      border: 1px solid #333;
+    }
+
+    .voter.current {
+      background: #3355ff;
+      color: white;
+      border-color: #5577ff;
+    }
+
+  </style>
+</head>
+<body>
+
+<h1>Rummy Debug Inspector</h1>
+
+<div>
+  <button id="newGame">New Game</button>
+  <button id="next">Next Turn</button>
+</div>
+
+<h2>May I Requests</h2>
+<div id="mayI"></div>
+
+<h2>
+  Resolved May I Requests
+  <button id="toggleResolved">Show</button>
+</h2>
+<div id="resolvedMayI" style="display: none;"></div>
+
+<h2>Piles</h2>
+<div id="piles"></div>
+
+<h2>Players</h2>
+<div id="players"></div>
+
+<h2>Raw Game State</h2>
+<pre id="state"></pre>
+
+<script type="module">
+  import { LocalGameState } from "/src/models/LocalGameState.ts";
+  import { AIPlayer, EasyBot, HardBot } from "/src/models/AIPlayer.ts";
+
+  let atlas = {};
+  const resolvedRequests = [];
+  let resolvedOpen = false;
+  let game;
+  
+  const mayIDiv = document.getElementById("mayI");
+  const resolvedDiv = document.getElementById("resolvedMayI");
+  const toggleBtn = document.getElementById("toggleResolved");
+  const pilesDiv = document.getElementById("piles");
+  const playersDiv = document.getElementById("players");
+  const statePre = document.getElementById("state");
+
+  toggleBtn.onclick = () => {
+    resolvedOpen = !resolvedOpen;
+    toggleBtn.textContent = resolvedOpen ? "Hide" : "Show";
+    resolvedDiv.style.display = resolvedOpen ? "block" : "none";
+  };
+
+  document.getElementById("newGame").onclick = async () => {
+    await setupGame();
+    render();
+  };
+
+  document.getElementById("next").onclick = () => {
+    game.advanceTurn?.();
+    render();
+  };
+
+  async function setupGame() {
+    await loadAtlas();
+    game = new LocalGameState();
+    game.players.forEach((player, index) => {
+      if (!player.isHuman) {
+        const profile = index % 2 === 0 ? EasyBot : HardBot;
+        new AIPlayer(game, player, profile);
+        player.name = `${profile.name} Bot ${index}`;
+      }
+    });
+
+    game.onMayIRequest(() => render());
+    game.onMayIResponse(() => render());
+    game.onMayINextVoter(() => render());
+    game.onMayIResolved((req, accepted) => {
+      resolvedRequests.unshift({
+        req,
+        accepted
+      });
+
+      // keep list bounded so it does not grow forever
+      if (resolvedRequests.length > 50) {
+        resolvedRequests.pop();
+      }
+
+      render();
+    });
+
+
+    // on draw/discard
+
+    game.onOpponentDraw(() => render());
+    game.onOpponentDrawFromDiscard(() => render());
+    game.onOpponentDiscard(() => render());
+    game.onTurnAdvance(() => render());
+
+    game.startGame();
+  }
+
+  function render() {
+    statePre.textContent = JSON.stringify(game, null, 2);
+    playersDiv.innerHTML = "";
+
+    renderMayI();
+    renderResolvedMayI();
+    renderPiles();
+    renderPlayers();
+  }
+    
+  function renderMayI() {
+    mayIDiv.innerHTML = "";
+
+    const requests = game.mayIRequests;
+
+    if (!requests.length) {
+      mayIDiv.textContent = "No pending May I requests";
+      return;
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "mayI";
+
+    for (const req of requests) {
+      const reqDiv = document.createElement("div");
+      reqDiv.className = "mayI-request";
+
+      const isActive = !req.resolved;
+      if (isActive) reqDiv.classList.add("active");
+
+      const header = document.createElement("strong");
+      header.textContent = `Request from ${req.player.name}`;
+      reqDiv.appendChild(header);
+
+      reqDiv.appendChild(document.createElement("br"));
+
+      const cardRow = document.createElement("div");
+      cardRow.textContent = "Card:";
+      reqDiv.appendChild(cardRow);
+
+      const cardDiv = document.createElement("div");
+      cardDiv.className = "card";
+      applyCardStyle(cardDiv, req.card);
+      reqDiv.appendChild(cardDiv);
+
+      const votersDiv = document.createElement("div");
+      votersDiv.className = "voters";
+
+      req.voters.forEach((voter, index) => {
+        const span = document.createElement("div");
+        span.className = "voter";
+
+        if (index === req.nextVoterIndex && !req.resolved) {
+          span.classList.add("current");
+        }
+
+        span.textContent = voter.name;
+        votersDiv.appendChild(span);
+      });
+
+      reqDiv.appendChild(votersDiv);
+
+      const human = game.players.find(p => p.isHuman);
+
+      const currentVoter = req.voters[req.nextVoterIndex];
+
+      if (
+        !req.resolved &&
+        human &&
+        currentVoter &&
+        currentVoter.id === human.id
+      ) {
+        const approve = document.createElement("button");
+        approve.textContent = "Approve";
+        approve.onclick = () => {
+          game.respondToMayI(human, req, true);
+        };
+
+        const deny = document.createElement("button");
+        deny.textContent = "Deny";
+        deny.onclick = () => {
+          game.respondToMayI(human, req, false);
+        };
+
+        reqDiv.appendChild(approve);
+        reqDiv.appendChild(deny);
+      }
+
+      if (req.resolved) {
+        const result = document.createElement("div");
+        result.style.marginTop = "6px";
+
+        if (req.deniedBy) {
+          result.textContent = `Denied by ${req.deniedBy.name}`;
+        } else {
+          result.textContent = `Accepted, winner: ${req.winner?.name}`;
+        }
+
+        reqDiv.appendChild(result);
+      }
+
+      wrapper.appendChild(reqDiv);
+    }
+
+    mayIDiv.appendChild(wrapper);
+  }
+
+  function renderResolvedMayI() {
+    resolvedDiv.innerHTML = "";
+
+    if (!resolvedRequests.length) {
+      resolvedDiv.textContent = "No resolved requests yet";
+      return;
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "resolved";
+
+    for (const entry of resolvedRequests) {
+      const { req, accepted } = entry;
+
+      const row = document.createElement("div");
+      row.className = "resolved-item";
+
+      const result = accepted
+        ? `<span class="resolved-accepted">ACCEPTED</span>`
+        : `<span class="resolved-denied">DENIED</span>`;
+
+      const denied = req.deniedBy ? ` by ${req.deniedBy.name}` : "";
+      const winner = req.winner ? ` -> ${req.winner.name}` : "";
+
+      row.innerHTML = `
+        ${req.player.name} requested ${formatCard(req.card)}
+        ${result}${denied}${winner}
+      `;
+
+      wrapper.appendChild(row);
+    }
+
+    resolvedDiv.appendChild(wrapper);
+  }
+
+
+  function renderPiles() {
+    pilesDiv.innerHTML = "";
+
+    const draw = game.drawPile ?? [];
+    const discard = game.discardPile ?? [];
+
+    pilesDiv.className = "piles";
+
+    pilesDiv.appendChild(
+      buildPile("Draw Pile", draw)
+    );
+
+    pilesDiv.appendChild(
+      buildPile("Discard Pile", discard)
+    );
+  }
+  
+  function renderPlayers() {
+    const current = game.getCurrentPlayer();
+
+    for (const player of game.players) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "player";
+
+      const isCurrent = current && current.id === player.id;
+      if (isCurrent) wrapper.classList.add("current");
+
+      const title = document.createElement("h3");
+      title.textContent = player.name + (isCurrent ? " (current turn)" : "");
+      wrapper.appendChild(title);
+
+      // Controls only for current player
+      if (isCurrent) {
+        const controls = document.createElement("div");
+
+        const drawPileBtn = document.createElement("button");
+        drawPileBtn.textContent = "Draw from Pile";
+        drawPileBtn.disabled = game.drawnThisTurn;
+        drawPileBtn.onclick = () => {
+          game.drawCard();
+          render();
+        };
+
+        const drawDiscardBtn = document.createElement("button");
+        drawDiscardBtn.textContent = "Draw from Discard";
+        drawDiscardBtn.disabled = game.drawnThisTurn || game.discardPile.length === 0;
+        drawDiscardBtn.onclick = () => {
+          game.drawDiscard();
+          render();
+        };
+
+        const endTurnBtn = document.createElement("button");
+        endTurnBtn.textContent = "End Turn";
+        endTurnBtn.disabled = !(game.drawnThisTurn && game.discardedThisTurn);
+        endTurnBtn.onclick = async () => {
+          await game.endTurn();
+          render();
+        };
+
+        controls.appendChild(drawPileBtn);
+        controls.appendChild(drawDiscardBtn);
+        controls.appendChild(endTurnBtn);
+
+        wrapper.appendChild(controls);
+      }
+
+      if (isCurrent && game.cardOnTable) {
+        const tableWrapper = document.createElement("div");
+        tableWrapper.className = "table-area";
+
+        const label = document.createElement("strong");
+        label.textContent = "Card on table";
+        tableWrapper.appendChild(label);
+
+        const cardsRow = document.createElement("div");
+        cardsRow.className = "table-cards";
+
+        const cardDiv = document.createElement("div");
+        cardDiv.className = "card";
+        applyCardStyle(cardDiv, game.cardOnTable);
+        cardsRow.appendChild(cardDiv);
+
+        const takeBtn = document.createElement("button");
+        takeBtn.textContent = "Take into hand";
+        takeBtn.onclick = () => {
+          game.playerTakesCardOnTable();
+          render();
+        };
+        cardsRow.appendChild(takeBtn);
+
+        tableWrapper.appendChild(cardsRow);
+        wrapper.appendChild(tableWrapper);
+      }
+
+      const handDiv = document.createElement("div");
+      handDiv.className = "hand";
+
+      for (const card of player.hand) {
+        const cardWrapper = document.createElement("div");
+        cardWrapper.style.display = "flex";
+        cardWrapper.style.flexDirection = "column";
+        cardWrapper.style.alignItems = "center";
+
+        const cardDiv = document.createElement("div");
+        cardDiv.className = "card";
+        applyCardStyle(cardDiv, card);
+        cardWrapper.appendChild(cardDiv);
+
+        // Discard only for current player
+        if (isCurrent) {
+          const discardBtn = document.createElement("button");
+          discardBtn.textContent = "Discard";
+          discardBtn.style.fontSize = "10px";
+          discardBtn.disabled = !game.drawnThisTurn || game.discardedThisTurn;
+          discardBtn.onclick = () => {
+            game.discard(card);
+            render();
+          };
+          cardWrapper.appendChild(discardBtn);
+        }
+
+        handDiv.appendChild(cardWrapper);
+      }
+
+      wrapper.appendChild(handDiv);
+      playersDiv.appendChild(wrapper);
+    }
+  }
+
+  function buildPile(title, pile) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pile";
+
+    const header = document.createElement("h3");
+    header.textContent = `${title} (${pile.length})`;
+    wrapper.appendChild(header);
+
+    const cardsDiv = document.createElement("div");
+    cardsDiv.className = "pile-cards";
+
+    const topThree = pile.slice(-3).reverse();
+
+    for (const card of topThree) {
+      const cardDiv = document.createElement("div");
+      cardDiv.className = "card";
+      applyCardStyle(cardDiv, card);
+      cardsDiv.appendChild(cardDiv);
+    }
+
+    wrapper.appendChild(cardsDiv);
+    return wrapper;
+  }
+
+  async function loadAtlas() {
+    const xmlText = await fetch("/playingCards.xml").then(r => r.text());
+    const xml = new DOMParser().parseFromString(xmlText, "application/xml");
+
+    for (const sub of xml.querySelectorAll("SubTexture")) {
+      const name = sub.getAttribute("name");
+      atlas[name] = {
+        x: Number(sub.getAttribute("x")),
+        y: Number(sub.getAttribute("y")),
+        w: Number(sub.getAttribute("width")),
+        h: Number(sub.getAttribute("height")),
+        sheetW: Number(xml.documentElement.getAttribute("width")),
+        sheetH: Number(xml.documentElement.getAttribute("height"))
+      };
+    }
+  }
+
+  function getAtlasKey(card) {
+    const suitMap = {
+      hearts: "Hearts",
+      diamonds: "Diamonds",
+      clubs: "Clubs",
+      spades: "Spades"
+    };
+
+    const rankMap = {
+      1: "A",
+      11: "J",
+      12: "Q",
+      13: "K"
+    };
+
+    const rank = rankMap[card.rank] ?? card.rank;
+    return `card${suitMap[card.suit]}${rank}.png`;
+  }
+
+  function applyCardStyle(el, card) {
+    const key = getAtlasKey(card);
+    const frame = atlas[key];
+
+    if (!frame) {
+      el.textContent = "Missing: " + key;
+      return;
+    }
+
+    el.style.width = frame.w + "px";
+    el.style.height = frame.h + "px";
+    el.style.backgroundImage = "url(/playingCards.png)";
+    el.style.backgroundPosition = `-${frame.x}px -${frame.y}px`;
+    el.style.backgroundRepeat = "no-repeat";
+  }
+  
+  function formatCard(card) {
+    const rankMap = { 1: "A", 11: "J", 12: "Q", 13: "K" };
+    return `${rankMap[card.rank] ?? card.rank} of ${card.suit}`;
+  }
+</script>
+
+</body>
+</html>
