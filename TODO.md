@@ -16,6 +16,7 @@
 - [ ] ability to form melds
 - [ ] render the player rejecting a may I and taking the penalty
 - [ ] current card count/value totals in bottom right.
+- [x] player can pull unlimited number of cards from discard...
 
 - [ ] Multiplayer
 

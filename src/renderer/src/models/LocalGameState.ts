@@ -295,6 +295,10 @@ export class LocalGameState implements GameState {
       console.log('Discard pile is empty');
       return null;
     }
+    if (this.drawnThisTurn) {
+      console.log('Already drawn this turn');
+      return null;
+    }
     const card = this.discardPile.pop()!;
     this.cardOnTable = card;
     this.drawnThisTurn = true;
