@@ -8,7 +8,7 @@
 - [x] vote in order for may i requests
 - [x] On first turn if you click the dicard pile the card disappears and is not in the discard pile or in your hand.
 - [x] only display vote buttons when it is the players turn to vote.
-- [ ] if an AI makes a May I request during a human turn the UI might disappear (especially at the start)
+- [ ] if an AI makes a May I request during a human turn the May I Overlay might disappear (especially at the start)
     - something in the updateFromGameState function is resetting it or something.
 - [ ] Add a timeout for may I requests.
 - [ ] Klennedy penalty Rules
@@ -17,6 +17,7 @@
 - [ ] render the player rejecting a may I and taking the penalty
 - [x] current card count/value totals in bottom right.
 - [x] player can pull unlimited number of cards from discard...
+- [ ] When the player declines a request we need to animate the card + a penalty going into the players hand
 
 - [ ] Multiplayer
 
