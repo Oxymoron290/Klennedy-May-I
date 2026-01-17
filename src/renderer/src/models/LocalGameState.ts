@@ -229,12 +229,15 @@ export class LocalGameState implements GameState {
     }
 
     // Shuffle
-    for (let i = fullDeck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [fullDeck[i], fullDeck[j]] = [fullDeck[j], fullDeck[i]];
-    }
+    this.drawPile = this.shuffleDeck(fullDeck);
+  }
 
-    this.drawPile = fullDeck;
+  private shuffleDeck(deck: Card[]): Card[] {
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
   }
 
   private dealCards() {
@@ -249,7 +252,10 @@ export class LocalGameState implements GameState {
     if (this.drawPile.length === 0)
     {
       console.log('Draw pile is empty');
-      return null;
+      if(this.discardPile.length === 0) return null; // TODO: handle no cards left
+      this.drawPile = this.shuffleDeck(this.discardPile);
+      this.discardPile = [];
+      return this.drawCard();
     }
     if (this.drawnThisTurn) {
       console.log('Already drawn this turn');
