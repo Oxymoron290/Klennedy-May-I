@@ -79,7 +79,7 @@ export class AIPlayer {
     await this.delay(this.profile.thinkDelayMs);
 
     const deny = Math.random() < this.profile.mayIDenyChance;
-    this.game.respondToMayI(request, !deny);
+    this.game.respondToMayI(this.player, request, !deny);
   }
 
   private delay(ms: number) {

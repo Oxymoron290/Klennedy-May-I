@@ -15,13 +15,13 @@ export class LocalGameState implements GameState {
   drawnThisTurn: boolean = false;
   discardedThisTurn: boolean = false;
   
-  onOpponentDrawCallback: ((player: Player) => void) | null = null;
-  onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null;
-  onOpponentDrawFromDiscardCallback: ((player: Player, card: Card) => void) | null = null;
+  private onOpponentDrawCallbacks: Array<(player: Player) => void> = [];
+  private onOpponentDiscardCallbacks: Array<(player: Player, card: Card) => void> = [];
+  private onOpponentDrawFromDiscardCallbacks: Array<(player: Player, card: Card) => void> = [];
   private onTurnAdvanceCallbacks: Array<(player: Player) => void> = [];
-  onMayIRequestCallback: ((request: MayIRequest) => void) | null = null;
-  onMayIResponseCallback: ((request: MayIRequest, response: MayIResponse) => void) | null = null;
-  onMayIResolvedCallback: ((request: MayIRequest, accepted: boolean) => void) | null = null;
+  private onMayIRequestCallbacks: Array<(request: MayIRequest) => void> = [];
+  private onMayIResponseCallbacks: Array<(request: MayIRequest, response: MayIResponse) => void> = [];
+  private onMayIResolvedCallbacks: Array<(request: MayIRequest, accepted: boolean) => void> = [];
 
   constructor(decks: number = 3, totalPlayers: number = 5) {
     this.decks = decks;
@@ -31,16 +31,25 @@ export class LocalGameState implements GameState {
     this.dealCards();
   }
 
+  startGame(): void {
+    const current = this.getCurrentPlayer();
+    if (current) {
+      for (const cb of this.onTurnAdvanceCallbacks) {
+        cb(current);
+      }
+    }
+  }
+
   onOpponentDraw(callback: (player: Player) => void): void {
-    this.onOpponentDrawCallback = callback;
+    this.onOpponentDrawCallbacks.push(callback);
   }
 
   onOpponentDiscard(callback: (player: Player, card: Card) => void): void {
-    this.onOpponentDiscardCallback = callback;
+    this.onOpponentDiscardCallbacks.push(callback);
   }
 
   onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void {
-    this.onOpponentDrawFromDiscardCallback = callback;
+    this.onOpponentDrawFromDiscardCallbacks.push(callback);
   }
 
   onTurnAdvance(callback: (player: Player) => void): void {
@@ -48,32 +57,32 @@ export class LocalGameState implements GameState {
   }
 
   onMayIRequest(callback: (request: MayIRequest) => void): void {
-    this.onMayIRequestCallback = callback;
+    this.onMayIRequestCallbacks.push(callback);
   }
 
   onMayIResponse(callback: (request: MayIRequest, response: MayIResponse) => void): void {
-    this.onMayIResponseCallback = callback;
+    this.onMayIResponseCallbacks.push(callback);
   }
 
   onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void {
-    this.onMayIResolvedCallback = callback;
+    this.onMayIResolvedCallbacks.push(callback);
   }
 
   private opponentDraw(player: Player) {
-    if (this.onOpponentDrawCallback) {
-      this.onOpponentDrawCallback(player);
+    for (const cb of this.onOpponentDrawCallbacks) {
+      cb(player);
     }
   }
 
   private opponentDrawFromDiscard(player: Player, card: Card) {
-    if (this.onOpponentDrawFromDiscardCallback) {
-      this.onOpponentDrawFromDiscardCallback(player, card);
+    for (const cb of this.onOpponentDrawFromDiscardCallbacks) {
+      cb(player, card);
     }
   }
 
   private opponentDiscard(player: Player, card: Card) {
-    if (this.onOpponentDiscardCallback) {
-      this.onOpponentDiscardCallback(player, card);
+    for (const cb of this.onOpponentDiscardCallbacks) {
+      cb(player, card);
     }
   }
 
@@ -84,8 +93,8 @@ export class LocalGameState implements GameState {
   }
 
   private mayIRequest(request: MayIRequest) {
-    if (this.onMayIRequestCallback) {
-      this.onMayIRequestCallback(request);
+    for (const cb of this.onMayIRequestCallbacks) {
+      cb(request);
     }
   }
 
@@ -98,8 +107,8 @@ export class LocalGameState implements GameState {
   }
 
   private mayIResponse(request: MayIRequest, response: MayIResponse) {
-    if (this.onMayIResponseCallback) {
-      this.onMayIResponseCallback(request, response);
+    for (const cb of this.onMayIResponseCallbacks) {
+      cb(request, response);
     }
   }
 
@@ -130,8 +139,8 @@ export class LocalGameState implements GameState {
       request.resolve(accepted);
     }
 
-    if (this.onMayIResolvedCallback) {
-      this.onMayIResolvedCallback(request, accepted);
+    for (const cb of this.onMayIResolvedCallbacks) {
+      cb(request, accepted);
     }
   }
   
@@ -192,15 +201,6 @@ export class LocalGameState implements GameState {
     }
 
     this.discardPile.push(this.drawPile.pop()!);
-  }
-
-  startGame(): void {
-    const current = this.getCurrentPlayer();
-    if (current) {
-      for (const cb of this.onTurnAdvanceCallbacks) {
-        cb(current);
-      }
-    }
   }
 
   drawCard(): Card | null {

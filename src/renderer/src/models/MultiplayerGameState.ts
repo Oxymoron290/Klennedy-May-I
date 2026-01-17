@@ -11,13 +11,13 @@ export class MultiplayerGameState implements GameState {
   cardOnTable: Card | null = null;
   drawnThisTurn: boolean = false;
   
-  onOpponentDrawCallback: ((player: Player) => void) | null = null;
-  onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null;
-  onOpponentDrawFromDiscardCallback: ((player: Player, card: Card) => void) | null = null;
-  onTurnAdvanceCallback: ((player: Player) => void) | null = null;
-  onMayIRequestCallback: ((request: MayIRequest) => void) | null = null;
-  onMayIResponseCallback: ((request: MayIRequest, response: MayIResponse) => void) | null = null;
-  onMayIResolvedCallback: ((request: MayIRequest, accepted: boolean) => void) | null = null;
+  private onOpponentDrawCallbacks: Array<(player: Player) => void> = [];
+  private onOpponentDiscardCallbacks: Array<(player: Player, card: Card) => void> = [];
+  private onOpponentDrawFromDiscardCallbacks: Array<(player: Player, card: Card) => void> = [];
+  private onTurnAdvanceCallbacks: Array<(player: Player) => void> = [];
+  private onMayIRequestCallbacks: Array<(request: MayIRequest) => void> = [];
+  private onMayIResponseCallbacks: Array<(request: MayIRequest, response: MayIResponse) => void> = [];
+  private onMayIResolvedCallbacks: Array<(request: MayIRequest, accepted: boolean) => void> = [];
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -30,75 +30,85 @@ export class MultiplayerGameState implements GameState {
     // Optional: request initial state
     this.socket.emit('requestGameState');
   }
+
   startGame(): void {
-    throw new Error('Method not implemented.');
-  }
-
-  onOpponentDraw(callback: (player: Player) => void): void {
-    this.onOpponentDrawCallback = callback;
-    callback(this.getCurrentPlayer()!);
-  }
-
-  onOpponentDiscard(callback: (player: Player, card: Card) => void): void {
-    this.onOpponentDiscardCallback = callback;
-    callback(this.getCurrentPlayer()!, this.cardOnTable!);
-  }
-
-  onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void {
-    this.onOpponentDrawFromDiscardCallback = callback;
-    // callback(this.getCurrentPlayer()!, this.cardOnTable!);
-  }
-
-  onTurnAdvance(callback: (player: Player) => void): void {
-    this.onTurnAdvanceCallback = callback;
-    callback(this.getCurrentPlayer()!);
-  }
-
-  onMayIRequest(callback: (request: MayIRequest) => void): void {
-    this.onMayIRequestCallback = callback;
-  }
-
-  onMayIResponse(callback: (request: MayIRequest, response: MayIResponse) => void): void {
-    this.onMayIResponseCallback = callback;
-  }
-
-  onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void {
-    this.onMayIResolvedCallback = callback;
-  }
-
-  private opponentDraw(player: Player) {
-    if (this.onOpponentDrawCallback) {
-      this.onOpponentDrawCallback(player);
+    const current = this.getCurrentPlayer();
+    if (current) {
+      for (const cb of this.onTurnAdvanceCallbacks) {
+        cb(current);
+      }
     }
   }
 
-  private opponentDiscard(player: Player, card: Card) {
-    if (this.onOpponentDiscardCallback) {
-      this.onOpponentDiscardCallback(player, card);
+  onOpponentDraw(callback: (player: Player) => void): void {
+    this.onOpponentDrawCallbacks.push(callback);
+  }
+
+  onOpponentDiscard(callback: (player: Player, card: Card) => void): void {
+    this.onOpponentDiscardCallbacks.push(callback);
+  }
+
+  onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void {
+    this.onOpponentDrawFromDiscardCallbacks.push(callback);
+  }
+
+  onTurnAdvance(callback: (player: Player) => void): void {
+    this.onTurnAdvanceCallbacks.push(callback);
+  }
+
+  onMayIRequest(callback: (request: MayIRequest) => void): void {
+    this.onMayIRequestCallbacks.push(callback);
+  }
+
+  onMayIResponse(callback: (request: MayIRequest, response: MayIResponse) => void): void {
+    this.onMayIResponseCallbacks.push(callback);
+  }
+
+  onMayIResolved(callback: (request: MayIRequest, accepted: boolean) => void): void {
+    this.onMayIResolvedCallbacks.push(callback);
+  }
+
+  private opponentDraw(player: Player) {
+    for (const cb of this.onOpponentDrawCallbacks) {
+      cb(player);
     }
   }
 
   private opponentDrawFromDiscard(player: Player, card: Card) {
-    if (this.onOpponentDrawFromDiscardCallback) {
-      this.onOpponentDrawFromDiscardCallback(player, this.cardOnTable!);
-    }
-  }
-  
-  private turnAdvance(player: Player) {
-    if (this.onTurnAdvanceCallback) {
-      this.onTurnAdvanceCallback(player);
-    }
-  }
-  
-  private mayIRequest(request: MayIRequest) {
-    if (this.onMayIRequestCallback) {
-      this.onMayIRequestCallback(request);
+    for (const cb of this.onOpponentDrawFromDiscardCallbacks) {
+      cb(player, card);
     }
   }
 
+  private opponentDiscard(player: Player, card: Card) {
+    for (const cb of this.onOpponentDiscardCallbacks) {
+      cb(player, card);
+    }
+  }
+
+  private turnAdvance(player: Player) {
+    for (const cb of this.onTurnAdvanceCallbacks) {
+      cb(player);
+    }
+  }
+
+  private mayIRequest(request: MayIRequest) {
+    for (const cb of this.onMayIRequestCallbacks) {
+      cb(request);
+    }
+  }
+
+  private waitForMayIResolution(request: MayIRequest): Promise<boolean> {
+    request.promise = new Promise<boolean>(resolve => {
+      request.resolve = resolve;
+    });
+
+    return request.promise;
+  }
+
   private mayIResponse(request: MayIRequest, response: MayIResponse) {
-    if (this.onMayIResponseCallback) {
-      this.onMayIResponseCallback(request, response);
+    for (const cb of this.onMayIResponseCallbacks) {
+      cb(request, response);
     }
   }
 
@@ -125,47 +135,37 @@ export class MultiplayerGameState implements GameState {
       }
     }
 
-    if (this.onMayIResolvedCallback) {
-      this.onMayIResolvedCallback(request, accepted);
+    if (request.resolve) {
+      request.resolve(accepted);
     }
-  }
 
-
-  getPlayer(): Player | undefined {
-    return this.players.find(p => p.isPlayer);
+    for (const cb of this.onMayIResolvedCallbacks) {
+      cb(request, accepted);
+    }
   }
   
-  getPlayerHand(): Card[] {
-    const player = this.getPlayer();
+  isPlayerTurn(player?: Player): boolean {
+    if(!player) {
+      const playerIndex = this.players.findIndex(p => p.isPlayer);
+      return this.currentTurn === playerIndex;
+    }
+    const playerIndex = this.players.findIndex(p => p.id === player.id);
+    return this.currentTurn === playerIndex;
+  }
+
+  getCurrentPlayer(): Player | undefined {
+    return this.players[this.currentTurn];
+  }
+
+  getCurrentPlayerHand(): Card[] {
+    const player = this.getCurrentPlayer();
     return player ? player.hand : [];
-  }
-
-  setPlayerHand(hand: Card[]): void {
-    const player = this.getPlayer();
-    if (player) {
-      player.hand = hand;
-    }
-  }
-
-  pushPlayerHand(card: Card): void {
-    const player = this.getPlayer();
-    if (player) {
-      player.hand.push(card);
-    }
-  }
-
-  popPlayerHand(): Card | undefined {
-    const player = this.getPlayer();
-    if (player) {
-      return player.hand.pop();
-    }
-    return undefined;
   }
 
   getOpponents(): Player[] {
     return this.players.filter(p => !p.isPlayer);
   }
-
+  
   private syncFromServer(serverState: any) {
     this.players = serverState.players;
     this.drawPile = serverState.drawPile;
@@ -189,7 +189,7 @@ export class MultiplayerGameState implements GameState {
     this.socket.emit('discardCard', card);
   }
   
-  mayI(card: Card): void {
+  mayI(player: Player, card: Card): void {
     throw new Error('Method not implemented.');
   }
 
@@ -203,18 +203,5 @@ export class MultiplayerGameState implements GameState {
 
   endTurn(): void {
     console.log('Ending turn for local game state');
-  }
-
-  isPlayerTurn(player?: Player): boolean {
-    if(!player) {
-      const playerIndex = this.players.findIndex(p => p.isPlayer);
-      return this.currentTurn === playerIndex;
-    }
-    const playerIndex = this.players.findIndex(p => p.id === player.id);
-    return this.currentTurn === playerIndex;
-  }
-
-  getCurrentPlayer(): Player | undefined {
-    return this.players[this.currentTurn];
   }
 }
