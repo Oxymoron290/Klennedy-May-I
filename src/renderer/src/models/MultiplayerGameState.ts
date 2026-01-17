@@ -1,5 +1,6 @@
 import { Socket } from 'socket.io-client'
 import { Card, Player, GameState, MayIRequest, MayIResponse } from './GameState'
+import { request } from 'express';
 
 export class MultiplayerGameState implements GameState {
   private socket: Socket;
@@ -98,14 +99,6 @@ export class MultiplayerGameState implements GameState {
     }
   }
 
-  private waitForMayIResolution(request: MayIRequest): Promise<boolean> {
-    request.promise = new Promise<boolean>(resolve => {
-      request.resolve = resolve;
-    });
-
-    return request.promise;
-  }
-
   private mayIResponse(request: MayIRequest, response: MayIResponse) {
     for (const cb of this.onMayIResponseCallbacks) {
       cb(request, response);
@@ -189,7 +182,15 @@ export class MultiplayerGameState implements GameState {
     this.socket.emit('discardCard', card);
   }
   
-  mayI(player: Player, card: Card): void {
+  async mayI(player: Player, card: Card): Promise<boolean> {
+    throw new Error('Method not implemented.');
+  }
+  
+  respondToMayI(player: Player, request: MayIRequest, allow: boolean): void {
+    throw new Error('Method not implemented.');
+  }
+
+  async waitForNoPendingMayI(): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

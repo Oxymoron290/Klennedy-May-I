@@ -1,5 +1,5 @@
 - [x] ability to draw from discard pile
-- [ ] Scoreboard
+- [x] Scoreboard
 - [ ] ability to form melds
 - [ ] ability to "May I"
 - [ ] ability to reject or accept a "May I"

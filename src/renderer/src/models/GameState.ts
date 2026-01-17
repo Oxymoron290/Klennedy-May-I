@@ -20,6 +20,7 @@ export interface MayIRequest {
   player: Player;
   card: Card;
   responses: MayIResponse[];
+  resolved: boolean;
 
   resolve?: (accepted: boolean) => void;
   promise?: Promise<boolean>;
@@ -47,7 +48,9 @@ export interface GameState {
   drawCard(): Card | null;
   drawDiscard(): Card | null;
   discard(card: Card): void;
-  mayI(player: Player, card: Card): void;
+  mayI(player: Player, card: Card): Promise<boolean>;
+  respondToMayI(player: Player, request: MayIRequest, allow: boolean): void
+  waitForNoPendingMayI(): Promise<void>;
   getCurrentPlayer(): Player | undefined;
   getCurrentPlayerHand(): Card[];
   isPlayerTurn(player?: Player): boolean;

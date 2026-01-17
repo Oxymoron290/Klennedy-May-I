@@ -141,6 +141,7 @@ export class LocalGameState implements GameState {
   }
 
   private mayIResolved(request: MayIRequest) {
+    request.resolved = true;
     const accepted = request.responses.every(r => r.accepted);
     console.log(`May I request ${accepted ? 'accepted' : 'denied'} for card:`, request.card);
     
@@ -165,6 +166,12 @@ export class LocalGameState implements GameState {
 
     if (request.resolve) {
       request.resolve(accepted);
+    }
+
+    // Remove the request from active requests
+    const requestIndex = this.mayIRequests.indexOf(request);
+    if (requestIndex !== -1) {
+      this.mayIRequests.splice(requestIndex, 1);
     }
 
     for (const cb of this.onMayIResolvedCallbacks) {
@@ -315,7 +322,8 @@ export class LocalGameState implements GameState {
       id: uuidv4(),
       player,
       card,
-      responses: []
+      responses: [],
+      resolved: false,
     };
 
     this.mayIRequests.push(request);
@@ -337,6 +345,12 @@ export class LocalGameState implements GameState {
       return;
     }
 
+    // Prevent duplicate responses
+    if (req.responses.some(r => r.player.id === player.id)) {
+      console.log('Player has already responded to this May I.');
+      return;
+    }
+
     const response: MayIResponse = {
       player,
       accepted: allow
@@ -344,6 +358,19 @@ export class LocalGameState implements GameState {
 
     req.responses.push(response);
     this.mayIResponse(req, response);
+
+    const eligibleVoters = this.players.filter(p => p.id !== req.player.id);
+    if (req.responses.length === eligibleVoters.length) {
+      this.mayIResolved(req);
+    }
+  }
+
+  async waitForNoPendingMayI(): Promise<void> {
+    const pending = this.mayIRequests.filter(r => !r.resolved);
+
+    if (pending.length === 0) return;
+
+    await Promise.all(pending.map(r => r.promise));
   }
 
   discardCardOnTable(): void {

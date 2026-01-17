@@ -11,14 +11,14 @@ export interface AIProfile {
 export const EasyBot: AIProfile = {
   name: "Easy",
   mayIDenyChance: 0.05,
-  thinkDelayMs: 500,
+  thinkDelayMs: 1000,
   drawFromDiscardChance: 0.3
 };
 
 export const HardBot: AIProfile = {
   name: "Hard",
   mayIDenyChance: 0.25,
-  thinkDelayMs: 1200,
+  thinkDelayMs: 1700,
   drawFromDiscardChance: 0.7
 };
 
@@ -47,6 +47,9 @@ export class AIPlayer {
 
   private async takeTurn() {
     await this.delay(this.profile.thinkDelayMs);
+    await this.game.waitForNoPendingMayI();
+
+    // TODO: implement klennedy rules
 
     const shouldDrawDiscard =
       this.game.discardPile.length > 0 &&
@@ -59,11 +62,13 @@ export class AIPlayer {
     if (!card) return;
 
     await this.delay(this.profile.thinkDelayMs);
+    await this.game.waitForNoPendingMayI();
 
     const index = Math.floor(Math.random() * (this.player.hand.length + 1));
     this.player.hand.splice(index, 0, card);
 
     await this.delay(this.profile.thinkDelayMs);
+    await this.game.waitForNoPendingMayI();
 
     const discardIndex = Math.floor(Math.random() * this.player.hand.length);
     const discard = this.player.hand[discardIndex];
@@ -71,6 +76,7 @@ export class AIPlayer {
     this.game.discard(discard);
 
     await this.delay(300);
+    await this.game.waitForNoPendingMayI();
 
     await this.game.endTurn();
   }
