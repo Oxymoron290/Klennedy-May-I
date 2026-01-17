@@ -35,6 +35,7 @@ export class LocalGameState implements GameState {
   discardPile: Card[] = [];
   currentTurn: number = 0;
   currentRound: number = 0;
+  mayIRequestExpirationMs: number = 15000; // 15 seconds
   roundConfigs = roundConfigs;
 
   mayIRequests: MayIRequest[] = [];
@@ -373,6 +374,7 @@ export class LocalGameState implements GameState {
 
     if (request.voters.length > 0) {
       this.mayINextVoter(request, request.voters[0]);
+      this.startMayITimeout(request);
     }
 
     return await this.waitForMayIResolution(request);
@@ -427,6 +429,7 @@ export class LocalGameState implements GameState {
     if (req.nextVoterIndex < req.voters.length) {
       const next = req.voters[req.nextVoterIndex];
       this.mayINextVoter(req, next);
+      this.startMayITimeout(req);
     } else {
       this.resolveMayI(req, req.player, null);
     }
@@ -436,6 +439,8 @@ export class LocalGameState implements GameState {
     req.resolved = true;
     req.winner = winner;
     req.deniedBy = deniedBy;
+
+    this.clearMayITimeout(req);
 
     const requesterWon = winner.id === req.player.id;
 
@@ -467,6 +472,29 @@ export class LocalGameState implements GameState {
     // Fire callback: accepted = requesterWon
     for (const cb of this.onMayIResolvedCallbacks) {
       cb(req, requesterWon);
+    }
+  }
+
+  private startMayITimeout(req: MayIRequest) {
+    this.clearMayITimeout(req);
+
+    req.timeoutHandle = setTimeout(() => {
+      if (req.resolved) return;
+
+      const expected = req.voters[req.nextVoterIndex];
+      if (!expected) return;
+
+      console.log(`May I timeout: ${expected.name} auto-accepts`);
+
+      // Auto accept on their behalf
+      this.respondToMayI(expected, req, true);
+    }, this.mayIRequestExpirationMs);
+  }
+
+  private clearMayITimeout(req: MayIRequest) {
+    if (req.timeoutHandle) {
+      clearTimeout(req.timeoutHandle);
+      req.timeoutHandle = undefined;
     }
   }
 

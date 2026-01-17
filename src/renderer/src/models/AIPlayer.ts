@@ -51,9 +51,9 @@ export class AIPlayer {
       this.considerRequestingMayI();
     });
 
-    this.game.onMayIRequest(req => {
-      this.considerMayIRequest(req);
-    });
+    // this.game.onMayIRequest(req => {
+    //   this.considerMayIRequest(req);
+    // });
     
     this.game.onMayINextVoter((req, next) => {
       if (next.id === this.player.id) {
