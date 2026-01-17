@@ -1,31 +1,5 @@
-import { Card, Player, GameState, MayIRequest, MayIResponse } from './GameState'
+import { Card, Player, GameState, MayIRequest, MayIResponse, roundConfigs, Rank } from './GameState'
 import { v4 as uuidv4 } from 'uuid';
-
-export const roundConfigs = [
-  { sets: 2, },
-  { runs: 1, sets: 1 },
-  { runs: 2, },
-  { sets: 3, },
-  { runs: 1, sets: 2 },
-  { runs: 2, sets: 1 },
-  { runs: 3, },
-];
-
-const values = {
-  1: 15,  // Ace
-  2: 5,
-  3: 5,
-  4: 5,
-  5: 5,
-  6: 5,
-  7: 5,
-  8: 10,
-  9: 10,
-  10: 10,
-  11: 10, // Jack
-  12: 10, // Queen
-  13: 15  // King
-}
 
 export class LocalGameState implements GameState {
   decks: number;
@@ -249,7 +223,7 @@ export class LocalGameState implements GameState {
     for (let d = 0; d < this.decks; d++) {
       for (const suit of suits) {
         for (let rank = 1; rank <= 13; rank++) {
-          fullDeck.push({ suit, rank, guid: uuidv4() });
+          fullDeck.push({ suit, rank: rank as Rank, guid: uuidv4() });
         }
       }
     }

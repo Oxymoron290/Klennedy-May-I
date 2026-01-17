@@ -1,6 +1,34 @@
+export const roundConfigs = [
+  { sets: 2, },
+  { runs: 1, sets: 1 },
+  { runs: 2, },
+  { sets: 3, },
+  { runs: 1, sets: 2 },
+  { runs: 2, sets: 1 },
+  { runs: 3, },
+];
+
+export type Rank = 1|2|3|4|5|6|7|8|9|10|11|12|13;
+
+export const values: Record<Rank, 5 | 10 | 15> = {
+  1: 15,  // Ace
+  2: 5,
+  3: 5,
+  4: 5,
+  5: 5,
+  6: 5,
+  7: 5,
+  8: 10,
+  9: 10,
+  10: 10,
+  11: 10, // Jack
+  12: 10, // Queen
+  13: 15  // King
+}
+
 export interface Card {
   suit: 'spades' | 'hearts' | 'diamonds' | 'clubs';
-  rank: number; // 1=A, 2-10, 11=J, 12=Q, 13=K
+  rank: Rank; // 1=A, 2-10, 11=J, 12=Q, 13=K
   guid: string;
   rotation?: number;
 }

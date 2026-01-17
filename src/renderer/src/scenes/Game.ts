@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import io, { Socket } from 'socket.io-client';
 import { LocalGameState } from '../models/LocalGameState';
 import { MultiplayerGameState } from '../models/MultiplayerGameState';
-import { Card, Player, GameState, MayIRequest } from '../models/GameState';
+import { Card, Player, GameState, MayIRequest, values } from '../models/GameState';
 import { AIPlayer, EasyBot, HardBot } from "../models/AIPlayer";
 
 export default class GameScene extends Phaser.Scene {
@@ -25,6 +25,7 @@ export default class GameScene extends Phaser.Scene {
   handDropZone!: Phaser.GameObjects.Zone;
   scoreboardContainer!: Phaser.GameObjects.Container;
   mayIContainer!: Phaser.GameObjects.Container;
+  cardSummaryContainer!: Phaser.GameObjects.Container;
 
   private draggedCardData: Card | null = null;
   private originalIndex: number = -1;
@@ -224,6 +225,10 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(80)
       .setVisible(false);
 
+    this.cardSummaryContainer = this.add.container(140, 590)
+      .setDepth(70)
+      .setVisible(true);
+
     // Hand Container & Drop Zone
     this.handContainer = this.add.container(600, 700).setDepth(10).setVisible(false)
     this.handContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, 1200, 200), Phaser.Geom.Rectangle.Contains)
@@ -366,6 +371,8 @@ export default class GameScene extends Phaser.Scene {
     const player = this.gameState!.players.find(p => p.isPlayer)!;
     this.renderHand(player.hand);
 
+    this.renderCardSummary(player.hand);
+
     this.renderDiscardPile(this.gameState.discardPile);
 
     this.renderPlayerName();
@@ -404,7 +411,6 @@ export default class GameScene extends Phaser.Scene {
     const isMyTurn = expected?.id === me.id;
 
     if (!isMyTurn) {
-      console.log(`It's not your turn to vote on May I request ${me.id} != ${expected?.id}`);
       const waiting = this.add.text(80, 10, "Waiting for other players...", {
         fontSize: "14px",
         color: "#cccccc"
@@ -1099,4 +1105,85 @@ export default class GameScene extends Phaser.Scene {
       }
     });
   }
+
+  private renderCardSummary(hand: Card[]) {
+    const { buckets, grandCount, grandTotal } = this.computeHandSummary(hand);
+
+    this.cardSummaryContainer.removeAll(true);
+
+    const width = 260;
+    const rowHeight = 26;
+
+    // Background
+    const bg = this.add.rectangle(0, 0, width, 190, 0x000000, 0.5)
+      .setOrigin(0.5)
+      .setStrokeStyle(1, 0xffffff, 0.2);
+    this.cardSummaryContainer.add(bg);
+
+    // Headers
+    const headerY = -80;
+    this.cardSummaryContainer.add(this.add.text(-90, headerY, "", { fontSize: "14px", color: "#ffffff" }));
+    this.cardSummaryContainer.add(this.add.text(-10, headerY, "Count", { fontSize: "14px", color: "#ffffff" }));
+    this.cardSummaryContainer.add(this.add.text(70, headerY, "Value", { fontSize: "14px", color: "#ffffff" }));
+
+    const rows = [
+      { label: "5", ...buckets[5] },
+      { label: "10", ...buckets[10] },
+      { label: "15", ...buckets[15] },
+    ];
+
+    rows.forEach((row, i) => {
+      const y = headerY + 30 + i * rowHeight;
+      this.cardSummaryContainer.add(this.add.text(-90, y, row.label, { fontSize: "14px", color: "#cccccc" }));
+      this.cardSummaryContainer.add(this.add.text(-10, y, `${row.count}`, { fontSize: "14px", color: "#cccccc" }));
+      this.cardSummaryContainer.add(this.add.text(70, y, `${row.total}`, { fontSize: "14px", color: "#cccccc" }));
+    });
+
+    // Divider
+    this.cardSummaryContainer.add(
+      this.add.rectangle(0, 60, width - 20, 1, 0xffffff, 0.2)
+    );
+
+    // Totals
+    this.cardSummaryContainer.add(this.add.text(-90, 75, "TOTAL", { fontSize: "14px", color: "#ffffff" }));
+    this.cardSummaryContainer.add(this.add.text(-10, 75, `${grandCount}`, { fontSize: "14px", color: "#ffffff" }));
+    this.cardSummaryContainer.add(this.add.text(70, 75, `${grandTotal}`, { fontSize: "14px", color: "#00ff88" }));
+  }
+
+  private computeHandSummary(hand: Card[]) {
+    const buckets: Record<BucketValue, Bucket> = {
+      5: { count: 0, total: 0 },
+      10: { count: 0, total: 0 },
+      15: { count: 0, total: 0 },
+    };
+
+    hand.forEach(card => {
+      const value = values[card.rank] as BucketValue | undefined;
+
+      if (value === 5 || value === 10 || value === 15) {
+        buckets[value].count++;
+        buckets[value].total += value;
+      }
+    });
+
+    const grandCount =
+      buckets[5].count + buckets[10].count + buckets[15].count;
+    const grandTotal =
+      buckets[5].total + buckets[10].total + buckets[15].total;
+
+    return { buckets, grandCount, grandTotal };
+  }
 }
+
+type BucketValue = 5 | 10 | 15;
+
+type Bucket = {
+  count: number;
+  total: number;
+};
+
+const buckets: Record<BucketValue, Bucket> = {
+  5: { count: 0, total: 0 },
+  10: { count: 0, total: 0 },
+  15: { count: 0, total: 0 },
+};
