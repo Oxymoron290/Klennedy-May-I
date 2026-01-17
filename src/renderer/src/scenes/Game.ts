@@ -20,6 +20,7 @@ export default class GameScene extends Phaser.Scene {
   private draggedCardData: Card | null = null;
   private originalIndex: number = -1;
   private opponentHandContainers: Phaser.GameObjects.Container[] = [];
+  private opponentNameTexts: Phaser.GameObjects.Text[] = [];
   private pendingCardSprite: Phaser.GameObjects.Sprite | null = null;
 
   constructor() {
@@ -61,10 +62,25 @@ export default class GameScene extends Phaser.Scene {
     })
 
     localBtn.on('pointerdown', () => {
-      this.gameState = new LocalGameState()
-      this.updateFromGameState()
-      localBtn.destroy()
-      joinBtn.destroy()
+      this.gameState = new LocalGameState();
+
+      this.gameState!.onOpponentDraw((player: Player) => {
+        console.log(`${player.name} drew a card.`);
+        this.animateOpponentDraw(player);
+      });
+      this.gameState!.onOpponentDiscard((player: Player, card: Card) => {
+        console.log(`${player.name} discarded ${card?.suit} ${card?.rank}`);
+        this.animateOpponentDiscard(player, card);
+      });
+      this.gameState!.onTurnAdvance(() => {
+        const currentPlayer = this.gameState!.getCurrentPlayer();
+        console.log(`It's now ${currentPlayer?.name}'s turn.`);
+        this.updateFromGameState();
+      });
+
+      this.updateFromGameState();
+      localBtn.destroy();
+      joinBtn.destroy();
     })
 
     // Draw pile (top back card)
@@ -82,16 +98,7 @@ export default class GameScene extends Phaser.Scene {
       const drawn = this.gameState?.drawCard();
       if (!drawn) return;
 
-      const frameName = this.getFrameName(drawn)
-      this.pendingCardSprite = this.add.sprite(
-        this.drawPileSprite.x,
-        this.drawPileSprite.y,
-        'cards',
-        frameName
-      )
-        .setScale(0.6)
-        .setDepth(30)
-        .setInteractive({ draggable: true });
+      this.addPendingCardSprite(drawn);
 
       // Animate from draw pile to pointer position
       this.tweens.add({
@@ -230,6 +237,15 @@ export default class GameScene extends Phaser.Scene {
 
   private updateFromGameState() {
     if (!this.gameState) return;
+    
+    if (this.gameState!.cardOnTable === null) {
+      this.pendingCardSprite?.destroy();
+      this.pendingCardSprite = null;
+    } else {
+      if(!this.pendingCardSprite && this.gameState!.isPlayerTurn()) {
+        this.addPendingCardSprite(this.gameState!.cardOnTable);
+      }
+    }
 
     // Human hand
     this.renderHand(this.gameState.getPlayerHand());
@@ -240,6 +256,19 @@ export default class GameScene extends Phaser.Scene {
 
     // Render opponent hands (AI or real players)
     this.renderOpponentHands();
+  }
+
+  private addPendingCardSprite(card: Card) {
+    const frameName = this.getFrameName(card)
+    this.pendingCardSprite = this.add.sprite(
+      this.drawPileSprite.x,
+      this.drawPileSprite.y,
+      'cards',
+      frameName
+    )
+      .setScale(0.6)
+      .setDepth(30)
+      .setInteractive({ draggable: true });
   }
 
   private renderDiscardPile(discardPile: Card[]) {
@@ -254,6 +283,7 @@ export default class GameScene extends Phaser.Scene {
     // Clear previous
     this.opponentHandContainers.forEach(c => c.destroy());
     this.opponentHandContainers = [];
+    this.opponentNameTexts = [];
 
     const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
     const numOpponents = opponents.length;
@@ -286,7 +316,13 @@ export default class GameScene extends Phaser.Scene {
       this.opponentHandContainers.push(container)
 
       // Small fanned backs
-      const handSize = opponent.hand.length
+      let handSize = opponent.hand.length;
+      if (this.gameState!.isPlayerTurn(opponent)) {
+        if (this.gameState!.cardOnTable) {
+          handSize++;
+        }
+      }
+
       for (let i = 0; i < handSize; i++) {
         const back = this.add.sprite(
           i * 10 - (handSize * 5),  // local x offset for fan
@@ -301,13 +337,20 @@ export default class GameScene extends Phaser.Scene {
       }
 
       // Optional: Player label
-      container.add(
-        this.add.text(0, 50, opponent.name.toUpperCase(), {
-          fontSize: '16px',
-          color: '#fff',
-          backgroundColor: '#000000aa'
-        }).setOrigin(0.5)
-      )
+      const currentPlayer = this.gameState?.getCurrentPlayer();
+      const isCurrentPlayer = currentPlayer?.id === opponent.id;
+      const backgroundColor = isCurrentPlayer ? '#00ff00' : '#000000aa';
+      const color = isCurrentPlayer ? '#000' : '#fff';
+      
+      const nameText = this.add.text(0, 50, opponent.name.toUpperCase(), {
+        fontSize: '16px',
+        color: color,
+        backgroundColor: backgroundColor,
+        padding: { x: 10, y: 5 }
+      }).setOrigin(0.5);
+      
+      container.add(nameText);
+      this.opponentNameTexts.push(nameText);
     })
   }
 
@@ -391,15 +434,90 @@ export default class GameScene extends Phaser.Scene {
     const player = this.gameState?.getPlayer();
     if (!player) return;
 
+    const isPlayerTurn = this.gameState?.isPlayerTurn() ?? false;
+    const backgroundColor = isPlayerTurn ? '#00ff00' : '#000000aa';
+    const color = isPlayerTurn ? '#000' : '#fff';
+
     if (!this.playerNameText) {
       this.playerNameText = this.add.text(600, 790, player.name.toUpperCase(), {
         fontSize: '24px',
-        color: '#fff',
-        backgroundColor: '#000000aa',
+        color: color,
+        backgroundColor: backgroundColor,
         padding: { x: 20, y: 10 }
       }).setOrigin(0.5);
     } else {
       this.playerNameText.setText(player.name.toUpperCase());
+      this.playerNameText.setStyle({ backgroundColor: backgroundColor, color: color });
     }
+  }
+
+  private animateOpponentDraw(player: Player) {
+    const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
+    const opponentIndex = opponents.findIndex(opp => opp.id === player.id);
+    if (opponentIndex === -1) return;
+
+    const targetContainer = this.opponentHandContainers[opponentIndex];
+    if (!targetContainer) return;
+
+    // Create a temporary card back sprite at the draw pile position
+    const cardBack = this.add.sprite(
+      this.drawPileSprite.x,
+      this.drawPileSprite.y,
+      'backs',
+      this.cardBackTexture
+    )
+      .setScale(0.6)
+      .setDepth(50);
+
+    // Get the world position of the target container
+    const targetX = targetContainer.x;
+    const targetY = targetContainer.y;
+
+    // Animate the card from draw pile to opponent's hand
+    this.tweens.add({
+      targets: cardBack,
+      x: targetX,
+      y: targetY,
+      scale: 0.35,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => {
+        cardBack.destroy();
+        this.updateFromGameState();
+      }
+    });
+  }
+
+  private animateOpponentDiscard(player: Player, card: Card) {
+    const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
+    const opponentIndex = opponents.findIndex(opp => opp.id === player.id);
+    if (opponentIndex === -1) return;
+
+    const sourceContainer = this.opponentHandContainers[opponentIndex];
+    if (!sourceContainer) return;
+
+    // Create a card sprite at the opponent's hand position showing the actual card
+    const cardSprite = this.add.sprite(
+      sourceContainer.x,
+      sourceContainer.y,
+      'cards',
+      this.getFrameName(card)
+    )
+      .setScale(0.35)
+      .setDepth(50);
+
+    // Animate the card from opponent's hand to discard pile
+    this.tweens.add({
+      targets: cardSprite,
+      x: this.discardZone.x,
+      y: this.discardZone.y,
+      scale: 0.6,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => {
+        cardSprite.destroy();
+        this.updateFromGameState();
+      }
+    });
   }
 }

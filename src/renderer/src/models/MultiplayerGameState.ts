@@ -10,6 +10,10 @@ export class MultiplayerGameState implements GameState {
   
   cardOnTable: Card | null = null;
   drawnThisTurn: boolean = false;
+  
+  onOpponentDrawCallback: ((player: Player) => void) | null = null;
+  onOpponentDiscardCallback: ((player: Player, card: Card) => void) | null = null
+  onTurnAdvanceCallback: ((player: Player) => void) | null = null;
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -21,6 +25,39 @@ export class MultiplayerGameState implements GameState {
 
     // Optional: request initial state
     this.socket.emit('requestGameState');
+  }
+
+  onOpponentDraw(callback: (player: Player) => void): void {
+    this.onOpponentDrawCallback = callback;
+    callback(this.getCurrentPlayer()!);
+  }
+
+  onOpponentDiscard(callback: (player: Player, card: Card) => void): void {
+    this.onOpponentDiscardCallback = callback;
+    callback(this.getCurrentPlayer()!, this.cardOnTable!);
+  }
+
+  onTurnAdvance(callback: (player: Player) => void): void {
+    this.onTurnAdvanceCallback = callback;
+    callback(this.getCurrentPlayer()!);
+  }
+
+  private opponentDraw(player: Player) {
+    if (this.onOpponentDrawCallback) {
+      this.onOpponentDrawCallback(player);
+    }
+  }
+
+  private opponentDiscard(player: Player, card: Card) {
+    if (this.onOpponentDiscardCallback) {
+      this.onOpponentDiscardCallback(player, card);
+    }
+  }
+
+  private turnAdvance(player: Player) {
+    if (this.onTurnAdvanceCallback) {
+      this.onTurnAdvanceCallback(player);
+    }
   }
 
   getPlayer(): Player | undefined {
@@ -76,7 +113,7 @@ export class MultiplayerGameState implements GameState {
     this.socket.emit('drawDiscard');
     return null;
   }
-  
+
   discard(card: Card): void {
     this.socket.emit('discardCard', card);
   }
@@ -89,15 +126,20 @@ export class MultiplayerGameState implements GameState {
     // Notify server that player takes the card on table
   }
 
-  // Add more methods: discardCard(card: Card), etc.
-  
-
   endTurn(): void {
     console.log('Ending turn for local game state');
   }
 
-  isPlayerTurn(): boolean {
-    const playerIndex = this.players.findIndex(p => p.isPlayer);
+  isPlayerTurn(player?: Player): boolean {
+    if(!player) {
+      const playerIndex = this.players.findIndex(p => p.isPlayer);
+      return this.currentTurn === playerIndex;
+    }
+    const playerIndex = this.players.findIndex(p => p.id === player.id);
     return this.currentTurn === playerIndex;
+  }
+
+  getCurrentPlayer(): Player | undefined {
+    return this.players[this.currentTurn];
   }
 }

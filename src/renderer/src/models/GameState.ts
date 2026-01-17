@@ -12,6 +12,10 @@ export interface Player {
   isHuman: boolean;
 }
 
+type OpponentDraw = (player: Player) => void;
+type OpponentDiscard = (player: Player, card: Card) => void;
+type TurnAdvance = (player: Player) => void;
+
 export interface GameState {
   players: Player[];
   drawPile: Card[];
@@ -22,17 +26,24 @@ export interface GameState {
   drawnThisTurn: boolean;
 
   drawCard(): Card | null;
+  drawDiscard(): Card | null;
+  discard(card: Card): void;
   getPlayer(): Player | undefined;
   getPlayerHand(): Card[];
   setPlayerHand(hand: Card[]): void;
   pushPlayerHand(card: Card): void;
   popPlayerHand(): Card | undefined;
   getOpponents(): Player[];
+  
+  onOpponentDraw(callback: OpponentDraw): void;
+  onOpponentDiscard(callback: OpponentDiscard): void;
+  onTurnAdvance(callback: TurnAdvance): void;
   // Add more methods as needed: discard, meld, etc.
 
   discardCardOnTable(): void;
   playerTakesCardOnTable(index?: number): void;
 
   endTurn(): void;
-  isPlayerTurn(): boolean;
+  isPlayerTurn(player?: Player): boolean;
+  getCurrentPlayer(): Player | undefined;
 }
