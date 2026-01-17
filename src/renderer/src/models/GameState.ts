@@ -11,6 +11,8 @@ export interface Player {
   hand: Card[];
   isPlayer: boolean; // this is the person playing on our instance.
   isHuman: boolean;
+
+  currentScore?: number;
 }
 
 export interface MayIRequest {

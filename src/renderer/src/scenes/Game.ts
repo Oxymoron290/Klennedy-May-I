@@ -23,6 +23,7 @@ export default class GameScene extends Phaser.Scene {
   discardPileText!: Phaser.GameObjects.Text;
   discardRect!: Phaser.GameObjects.Rectangle;
   handDropZone!: Phaser.GameObjects.Zone;
+  scoreboardContainer!: Phaser.GameObjects.Container;
 
   private draggedCardData: Card | null = null;
   private originalIndex: number = -1;
@@ -39,12 +40,21 @@ export default class GameScene extends Phaser.Scene {
     this.load.atlasXML('backs', '/playingCardBacks.png', '/playingCardBacks.xml')
   }
 
+  private scoreBoardOffset() {
+    const seatOffset = 50 * (this.gameState?.players.length ?? 0);
+    return 1100 - seatOffset;
+  }
+
   create() {
     this.add.text(600, 50, 'May I?', {
       fontSize: '48px',
       color: '#fff',
       fontStyle: 'bold'
     }).setOrigin(0.5)
+
+    this.scoreboardContainer = this.add.container(this.scoreBoardOffset(), 30)
+      .setDepth(60)
+      .setVisible(false);
 
     let joinBtn: Phaser.GameObjects.Text;
     // Mode selection
@@ -289,6 +299,8 @@ export default class GameScene extends Phaser.Scene {
       this.discardPileText.setVisible(true);
       this.handContainer.setVisible(true);
       this.handDropZone.setVisible(true);
+      this.scoreboardContainer.setVisible(true);
+      this.scoreboardContainer.x = this.scoreBoardOffset();
     }
     
     if (this.gameState!.cardOnTable === null) {
@@ -308,8 +320,105 @@ export default class GameScene extends Phaser.Scene {
 
     this.renderPlayerName();
 
+    this.renderScoreboard();
+
     // Render opponent hands (AI or real players)
     this.renderOpponentHands();
+  }
+
+  private renderScoreboard() {
+    if (!this.gameState) return;
+
+    const state: any = this.gameState;
+    const rounds = state.roundConfigs ?? [];
+    const currentRound: number = state.currentRound ?? 0;
+    const players = this.gameState.players;
+
+    this.scoreboardContainer.removeAll(true);
+
+    const firstColWidth = 100;
+    const colWidth = 40;
+    const rowHeight = 22;
+    const totalCols = players.length + 1; // first col for round info
+    const totalWidth = firstColWidth + (colWidth * players.length);
+    const totalHeight = rowHeight * (rounds.length + 1);
+
+    const bg = this.add.rectangle(0, 0, totalWidth, totalHeight + 6, 0x000000, 0.35).setOrigin(0);
+    this.scoreboardContainer.add(bg);
+
+    // Header
+    const headerBg = this.add.rectangle(0, 0, totalWidth, rowHeight, 0x1a1a1a, 0.6).setOrigin(0);
+    this.scoreboardContainer.add(headerBg);
+    this.scoreboardContainer.add(this.add.text(4, 4, 'Round', { fontSize: '12px', color: '#ffffff', fontStyle: 'bold' }));
+
+    const initials = this.computePlayerInitials(players.map(p => p.name));
+    players.forEach((p, idx) => {
+      const x = firstColWidth + colWidth * idx + 4;
+      this.scoreboardContainer.add(this.add.text(x, 4, initials[idx], { fontSize: '12px', color: '#00e6ff' }));
+    });
+
+    rounds.forEach((cfg: any, roundIdx: number) => {
+      const y = rowHeight * (roundIdx + 1);
+      const isCurrent = roundIdx === currentRound;
+
+      if (isCurrent) {
+        const highlight = this.add.rectangle(0, y, totalWidth, rowHeight, 0x00aa00, 0.25).setOrigin(0);
+        this.scoreboardContainer.add(highlight);
+      }
+
+      const roundLabel = this.describeRound(cfg);
+      this.scoreboardContainer.add(this.add.text(4, y + 4, roundLabel, { fontSize: '12px', color: '#ffffff' }));
+
+      players.forEach((p, idx) => {
+        const x = firstColWidth + colWidth * idx + 4;
+        const score = (p as any).currentScore;
+        const display = roundIdx === currentRound
+          ? (score === undefined || score === null || score === 0 ? '-' : `${score}`)
+          : '-';
+        this.scoreboardContainer.add(this.add.text(x, y + 4, display, { fontSize: '12px', color: '#ffffff' }));
+      });
+    });
+  }
+
+  private computePlayerInitials(names: string[]): string[] {
+    const result: string[] = [];
+    const used = new Set<string>();
+
+    names.forEach(name => {
+      const parts = name.trim().split(/\s+/);
+      let initials = parts.map(p => p[0]?.toUpperCase() || '').join('');
+      if (!initials) {
+        initials = '?';
+      }
+
+      const first = parts[0] || '';
+      let extraIdx = 1;
+      let candidate = initials;
+      while (used.has(candidate) && extraIdx < first.length) {
+        candidate = first.slice(0, extraIdx + 1).toUpperCase();
+        extraIdx++;
+      }
+
+      let suffix = 1;
+      let final = candidate;
+      while (used.has(final)) {
+        final = `${candidate}${suffix}`;
+        suffix++;
+      }
+
+      used.add(final);
+      result.push(final);
+    });
+
+    return result;
+  }
+
+  private describeRound(cfg: any): string {
+    if (!cfg) return '-';
+    const parts: string[] = [];
+    if (cfg.sets) parts.push(`${cfg.sets} Set${cfg.sets > 1 ? 's' : ''}`);
+    if (cfg.runs) parts.push(`${cfg.runs} Run${cfg.runs > 1 ? 's' : ''}`);
+    return parts.length ? parts.join(' & ') : '-';
   }
 
   private addPendingCardSprite(card: Card) {
