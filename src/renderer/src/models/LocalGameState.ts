@@ -39,19 +39,14 @@ export class LocalGameState implements GameState {
     this.decks = decks;
     this.totalPlayers = totalPlayers;
     this.initializePlayers();
-    this.startRound();
   }
 
   startGame(): void {
-    const current = this.getCurrentPlayer();
-    if (current) {
-      for (const cb of this.onTurnAdvanceCallbacks) {
-        cb(current);
-      }
-    }
     for (const cb of this.onGameStartCallbacks) {
       cb();
     }
+
+    this.startRound();
   }
 
   endGame(): void {
@@ -295,8 +290,13 @@ export class LocalGameState implements GameState {
   }
 
   private endRound() {
-    // TODO: Tally everyone's scores, reset hands, redeal, etc.
+    // Tally everyone's scores, reset hands, redeal, etc.
+    this.players.forEach(player => {
+      player.scores[this.currentRound] = player.getHandSummary().grandTotal;
+      player.hand = [];
+    });
 
+    // Invoke round end callbacks
     this.roundEnd();
     // TODO: Do we need to wait or anything before starting next round?
 
@@ -312,9 +312,11 @@ export class LocalGameState implements GameState {
     this.drawnThisTurn = false;
     this.discardedThisTurn = false;
     this.cardOnTable = null;
+    this.roundMelds = [];
     this.initializeDeck();
     this.dealCards();
     this.roundStart();
+    this.turnAdvance(this.getCurrentPlayer()!);
   }
 
   private dealCards() {
