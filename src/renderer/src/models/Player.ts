@@ -60,8 +60,7 @@ export interface IPlayer {
   hand: Card[];
   isPlayer: boolean; // this is the person playing on our instance.
   isHuman: boolean;
-
-  currentScore?: number;
+  scores: number[];
 
   getHandSummary(): HandSummary
 }
@@ -78,8 +77,7 @@ export class Player implements IPlayer {
   hand: Card[];
   isPlayer: boolean;
   isHuman: boolean;
-
-  currentScore?: number;
+  scores: number[];
 
   constructor(name: string, isPlayer: boolean, isHuman: boolean) {
     this.id = uuidv4();
@@ -87,6 +85,7 @@ export class Player implements IPlayer {
     this.hand = [];
     this.isPlayer = isPlayer;
     this.isHuman = isHuman;
+    this.scores = [];
   }
 
   getHandSummary(): HandSummary {

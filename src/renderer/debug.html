@@ -12,6 +12,37 @@
       padding: 16px;
     }
 
+    .scoreboard {
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .scoreboard th,
+    .scoreboard td {
+      border: 1px solid #333;
+      padding: 6px 10px;
+      text-align: center;
+    }
+
+    .scoreboard th {
+      background: #1a1a1a;
+    }
+
+    .scoreboard .round-label {
+      text-align: left;
+      font-weight: bold;
+    }
+
+    .scoreboard tr.current-round {
+      background: #2a2a00;
+    }
+
+    .scoreboard tr.current-round td {
+      color: gold;
+    }
+
+
     .player {
       border: 1px solid #333;
       padding: 8px;
@@ -51,7 +82,6 @@
       transform: scale(0.6);
       transform-origin: top left;
     }
-
 
     .piles {
       display: flex;
@@ -234,6 +264,9 @@
   <button id="exportState">Export State</button>
 </div>
 
+<h2>Scoreboard</h2>
+<div id="scoreboard"></div>
+
 <h2>May I Requests</h2>
 <div id="mayI"></div>
 
@@ -261,6 +294,7 @@
   let resolvedOpen = false;
   let game;
   
+  const scoreboardDiv = document.getElementById("scoreboard");
   const mayIDiv = document.getElementById("mayI");
   const resolvedDiv = document.getElementById("resolvedMayI");
   const toggleBtn = document.getElementById("toggleResolved");
@@ -304,7 +338,7 @@
 
     URL.revokeObjectURL(url);
   };
-  
+
   async function setupGame() {
     await loadAtlas();
     game = new LocalGameState();
@@ -346,10 +380,81 @@
     statePre.textContent = JSON.stringify(game, null, 2);
     playersDiv.innerHTML = "";
 
+    renderScoreboard();
     renderMayI();
     renderResolvedMayI();
     renderPiles();
     renderPlayers();
+  }
+
+  function renderScoreboard() {
+    scoreboardDiv.innerHTML = "";
+
+    const table = document.createElement("table");
+    table.className = "scoreboard";
+
+    // Header row
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+
+    const corner = document.createElement("th");
+    corner.textContent = "Round";
+    headerRow.appendChild(corner);
+
+    for (const player of game.players) {
+      const th = document.createElement("th");
+      th.textContent = player.name;
+      headerRow.appendChild(th);
+    }
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Body
+    const tbody = document.createElement("tbody");
+
+    game.roundConfigs.forEach((config, roundIndex) => {
+      const tr = document.createElement("tr");
+
+      if (roundIndex === game.currentRound) {
+        tr.classList.add("current-round");
+      }
+
+      // Round label cell
+      const labelCell = document.createElement("td");
+      labelCell.className = "round-label";
+      labelCell.textContent = formatRoundLabel(config);
+      tr.appendChild(labelCell);
+
+      // Player score cells
+      for (const player of game.players) {
+        const td = document.createElement("td");
+
+        const score = player.scores?.[roundIndex];
+        td.textContent = score !== undefined ? score.toString() : "-";
+
+        tr.appendChild(td);
+      }
+
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    scoreboardDiv.appendChild(table);
+  }
+
+  function formatRoundLabel(config) {
+    const parts = [];
+
+    if (config.sets) {
+      parts.push(`${config.sets} set${config.sets > 1 ? "s" : ""}`);
+    }
+
+    if (config.runs) {
+      parts.push(`${config.runs} run${config.runs > 1 ? "s" : ""}`);
+    }
+
+    return parts.join(" & ");
   }
 
   function renderMayI() {

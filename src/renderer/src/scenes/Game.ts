@@ -727,7 +727,7 @@ export default class GameScene extends Phaser.Scene {
 
       players.forEach((p, idx) => {
         const x = firstColWidth + colWidth * idx + 4;
-        const score = (p as any).currentScore;
+        const score = (p as any).scores?.[roundIdx];
         const display = roundIdx === currentRound
           ? (score === undefined || score === null || score === 0 ? '-' : `${score}`)
           : '-';
