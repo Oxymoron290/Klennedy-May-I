@@ -32,9 +32,15 @@ export interface GameState {
   drawPile: Card[];
   discardPile: Card[];
   currentTurn: number;
+  currentRound: number;
+  turnCount: number;
+  roundMelds: Meld[];
   
+  mayIRequests: MayIRequest[];
+
   cardOnTable: Card | null;
   drawnThisTurn: boolean;
+  discardedThisTurn: boolean;
 
   startGame(): void;
   drawCard(): Card | null;

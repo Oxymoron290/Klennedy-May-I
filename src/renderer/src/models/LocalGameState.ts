@@ -11,6 +11,7 @@ export class LocalGameState implements GameState {
   discardPile: Card[] = [];
   currentTurn: number = 0;
   currentRound: number = 0;
+  turnCount: number = 0;
   roundConfigs = roundConfigs;
   roundMelds: Meld[] = [];
 
@@ -308,6 +309,7 @@ export class LocalGameState implements GameState {
     this.drawPile = [];
     this.discardPile = [];
     this.currentTurn = this.currentRound % this.totalPlayers;
+    this.turnCount = 0;
     this.mayIRequests = [];
     this.drawnThisTurn = false;
     this.discardedThisTurn = false;
@@ -746,6 +748,7 @@ export class LocalGameState implements GameState {
     }
 
     this.currentTurn = (this.currentTurn + 1) % this.totalPlayers;
+    this.turnCount++;
     this.drawnThisTurn = false;
     this.discardedThisTurn = false;
     this.cardOnTable = null;

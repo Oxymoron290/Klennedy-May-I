@@ -42,6 +42,14 @@
       color: gold;
     }
 
+    .scoreboard tfoot tr {
+      border-top: 2px solid #555;
+      background: #0f0f0f;
+    }
+
+    .scoreboard tfoot td {
+      padding-top: 6px;
+    }
 
     .player {
       border: 1px solid #333;
@@ -287,8 +295,15 @@
 
 <script type="module">
   import { LocalGameState } from "/src/models/LocalGameState.ts";
-  import { AIPlayer, EasyBot, HardBot } from "/src/models/AIPlayer.ts";
+  import { EasyBot, IntermediateBot, HardBot, ExpertBot, TimBot } from "/src/models/AIPlayer.ts";
 
+  const botTypes = [
+    EasyBot, 
+    //IntermediateBot, 
+    HardBot, 
+    ExpertBot,
+    TimBot,
+  ];
   let atlas = {};
   const resolvedRequests = [];
   let resolvedOpen = false;
@@ -345,9 +360,11 @@
     game.players.forEach((player, index) => {
       // if (!player.isHuman) {
       player.isHuman = false;
-        const profile = index % 2 === 0 ? EasyBot : HardBot;
-        new AIPlayer(game, player, profile);
-        player.name = `${profile.name} Bot ${index}`;
+
+        const BotClass = botTypes[index % botTypes.length];
+        const bot = new BotClass(game, player);
+
+        player.name = `${bot.name} Bot ${index}`;
       // }
     });
 
@@ -440,6 +457,32 @@
     });
 
     table.appendChild(tbody);
+
+    // --- FOOTER TOTALS ROW ---
+    const tfoot = document.createElement("tfoot");
+    const totalRow = document.createElement("tr");
+
+    const totalLabel = document.createElement("td");
+    totalLabel.textContent = "Total";
+    totalLabel.style.fontWeight = "bold";
+    totalRow.appendChild(totalLabel);
+
+    for (const player of game.players) {
+      const td = document.createElement("td");
+
+      const total = (player.scores ?? [])
+        .filter(s => typeof s === "number")
+        .reduce((sum, s) => sum + s, 0);
+
+      td.textContent = total.toString();
+      td.style.fontWeight = "bold";
+
+      totalRow.appendChild(td);
+    }
+
+    tfoot.appendChild(totalRow);
+    table.appendChild(tfoot);
+
     scoreboardDiv.appendChild(table);
   }
 

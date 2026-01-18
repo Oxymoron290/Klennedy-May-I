@@ -93,9 +93,8 @@ export default class GameScene extends Phaser.Scene {
 
       this.gameState.players.forEach((player, index) => {
         if (!player.isHuman) {
-          const profile = index % 2 === 0 ? EasyBot : HardBot;
-          new AIPlayer(this.gameState as LocalGameState, player, profile);
-          player.name = `${profile.name} Bot ${index}`;
+          new EasyBot(this.gameState as LocalGameState, player);
+          player.name = `${player.name} Bot ${index}`;
         }
       });
 

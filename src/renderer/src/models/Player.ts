@@ -31,25 +31,39 @@ export const validateMeld = (meld: Meld, initial: boolean = false): boolean => {
     return result;
   } else if (meld.type === 'run') {
     // All cards must be of the same suit and consecutive ranks
+    if (!meld.cards || meld.cards.length === 0) return false;
+
     const suit = meld.cards[0].card.suit;
-    const ranks = meld.cards.map(mc => mc.card.rank).sort((a, b) => a - b);
-    for (let i = 1; i < ranks.length; i++) {
-      if (ranks[i] !== ranks[i - 1] + 1) {
+
+    // All cards same suit
+    const sameSuit = meld.cards.every(mc => mc.card.suit === suit);
+    if (!sameSuit) return false;
+
+    // Initial run size constraints
+    if (initial) {
+      if (meld.cards.length < InitialRunCount) {
+        console.log(`Runs must have at least ${InitialRunCount} cards to start a meld.`);
         return false;
       }
-      const result = meld.cards.every(mc => mc.card.suit === suit);
-      if(result && initial) {
-        if(meld.cards.length < InitialRunCount) {
-          console.log(`Runs must have at least ${InitialRunCount} cards to start a meld.`);
-          return false;
-        }
-        if(meld.cards.length > InitialRunCount) {
-          console.log(`Runs cannot have more than ${InitialRunCount} cards on a new meld.`);
-          return false;
-        }
+      if (meld.cards.length > InitialRunCount) {
+        console.log(`Runs cannot have more than ${InitialRunCount} cards on a new meld.`);
+        return false;
       }
-      return result;
     }
+
+    const ranks = meld.cards
+      .map(mc => mc.card.rank)
+      .sort((a, b) => a - b);
+
+    // No duplicate ranks
+    if (new Set(ranks).size !== ranks.length) return false;
+
+    // Must be strictly consecutive
+    for (let i = 1; i < ranks.length; i++) {
+      if (ranks[i] !== ranks[i - 1] + 1) return false;
+    }
+
+    return true;
   }
   return false;
 }
