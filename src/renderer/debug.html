@@ -29,6 +29,12 @@
       background: #1a1a1a;
     }
 
+    .scoreboard th.current-player {
+      background: #2a2a00;
+      color: gold;
+      border-bottom: 2px solid gold;
+    }
+
     .scoreboard .round-label {
       text-align: left;
       font-weight: bold;
@@ -42,6 +48,13 @@
       color: gold;
     }
 
+    .scoreboard td.round-winner {
+      background: #123a1f;
+      color: #9dffb0;
+      font-weight: bold;
+      box-shadow: inset 0 0 0 1px #2fa34f;
+    }
+
     .scoreboard tfoot tr {
       border-top: 2px solid #555;
       background: #0f0f0f;
@@ -49,6 +62,19 @@
 
     .scoreboard tfoot td {
       padding-top: 6px;
+    }
+    
+    .scoreboard td.round-winner {
+      background: #123a1f;
+      color: #b8ffb8;
+      font-weight: bold;
+    }
+
+    .scoreboard td.total-winner {
+      background: #2a4a12;
+      color: #d8ff9a;
+      font-weight: bold;
+      border-top: 2px solid #88cc44;
     }
 
     .player {
@@ -273,6 +299,7 @@
 </div>
 
 <h2>Scoreboard</h2>
+<div id="turnInfo" style="margin-bottom: 8px; opacity: 0.8;"></div>
 <div id="scoreboard"></div>
 
 <h2>May I Requests</h2>
@@ -308,7 +335,8 @@
   const resolvedRequests = [];
   let resolvedOpen = false;
   let game;
-  
+
+  const turnInfoDiv = document.getElementById("turnInfo");
   const scoreboardDiv = document.getElementById("scoreboard");
   const mayIDiv = document.getElementById("mayI");
   const resolvedDiv = document.getElementById("resolvedMayI");
@@ -397,20 +425,26 @@
     statePre.textContent = JSON.stringify(game, null, 2);
     playersDiv.innerHTML = "";
 
+    turnInfoDiv.textContent = `Turn: ${game.turnCount ?? 0}`;
+
     renderScoreboard();
     renderMayI();
     renderResolvedMayI();
     renderPiles();
     renderPlayers();
   }
-
+  
   function renderScoreboard() {
     scoreboardDiv.innerHTML = "";
 
     const table = document.createElement("table");
     table.className = "scoreboard";
 
-    // Header row
+    const currentPlayer = game.getCurrentPlayer?.();
+
+    // -------------------
+    // HEADER
+    // -------------------
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
 
@@ -421,13 +455,20 @@
     for (const player of game.players) {
       const th = document.createElement("th");
       th.textContent = player.name;
+
+      if (currentPlayer && player.id === currentPlayer.id) {
+        th.classList.add("current-player");
+      }
+
       headerRow.appendChild(th);
     }
 
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    // Body
+    // -------------------
+    // BODY (ROUNDS)
+    // -------------------
     const tbody = document.createElement("tbody");
 
     game.roundConfigs.forEach((config, roundIndex) => {
@@ -437,28 +478,48 @@
         tr.classList.add("current-round");
       }
 
-      // Round label cell
+      // Round label
       const labelCell = document.createElement("td");
       labelCell.className = "round-label";
       labelCell.textContent = formatRoundLabel(config);
       tr.appendChild(labelCell);
 
-      // Player score cells
-      for (const player of game.players) {
+      // Collect scores for this round
+      const scores = game.players.map(p => p.scores?.[roundIndex]);
+      const validScores = scores.filter(s => typeof s === "number");
+
+      const lowest = validScores.length > 0
+        ? Math.min(...validScores)
+        : null;
+
+      // Player cells
+      game.players.forEach((player, i) => {
         const td = document.createElement("td");
 
-        const score = player.scores?.[roundIndex];
+        const score = scores[i];
         td.textContent = score !== undefined ? score.toString() : "-";
 
+        // Highlight winner only for completed rounds
+        if (
+          typeof score === "number" &&
+          lowest !== null &&
+          score === lowest &&
+          roundIndex < game.currentRound
+        ) {
+          td.classList.add("round-winner");
+        }
+
         tr.appendChild(td);
-      }
+      });
 
       tbody.appendChild(tr);
     });
 
     table.appendChild(tbody);
 
-    // --- FOOTER TOTALS ROW ---
+    // -------------------
+    // FOOTER (TOTALS)
+    // -------------------
     const tfoot = document.createElement("tfoot");
     const totalRow = document.createElement("tr");
 
@@ -467,18 +528,28 @@
     totalLabel.style.fontWeight = "bold";
     totalRow.appendChild(totalLabel);
 
-    for (const player of game.players) {
+    const totals = game.players.map(p =>
+      (p.scores ?? [])
+        .filter(s => typeof s === "number")
+        .reduce((sum, s) => sum + s, 0)
+    );
+
+    const anyScoresExist = totals.some(t => t > 0);
+    const lowestTotal = anyScoresExist ? Math.min(...totals) : null;
+
+    game.players.forEach((player, i) => {
       const td = document.createElement("td");
 
-      const total = (player.scores ?? [])
-        .filter(s => typeof s === "number")
-        .reduce((sum, s) => sum + s, 0);
-
+      const total = totals[i];
       td.textContent = total.toString();
       td.style.fontWeight = "bold";
 
+      if (lowestTotal !== null && total === lowestTotal) {
+        td.classList.add("total-winner");
+      }
+
       totalRow.appendChild(td);
-    }
+    });
 
     tfoot.appendChild(totalRow);
     table.appendChild(tfoot);
