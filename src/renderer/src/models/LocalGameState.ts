@@ -573,8 +573,6 @@ export class LocalGameState implements GameState {
     if(!this.isPlayerTurn()) {
       this.opponentDiscard(this.getCurrentPlayer()!, card);
     }
-
-    this.checkForWin();
   }
 
   async mayI(player: IPlayer, card: Card): Promise<boolean> {
@@ -737,12 +735,10 @@ export class LocalGameState implements GameState {
   }
 
   async endTurn(): Promise<void> {
+    if (this.checkForWin()) {
+      return;
+    }
     if (!this.drawnThisTurn || !this.discardedThisTurn) {
-      if(this.getCurrentPlayerHand().length === 0) {
-        console.log("Player has gone out. Ending round.");
-        this.endRound();
-        return;
-      }
       console.log("Must draw and discard before ending turn.");
       return;
     }
