@@ -71,7 +71,6 @@
       transform-origin: top left;
     }
 
-
     pre {
       background: #000;
       padding: 12px;
@@ -199,6 +198,29 @@
       color: #ffeaea;
     }
 
+    .melds {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #222;
+    }
+
+    .meld {
+      margin-bottom: 6px;
+    }
+
+    .meld-title {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-bottom: 2px;
+    }
+
+    .meld-cards {
+      display: flex;
+      gap: 4px;
+      transform: scale(0.6);
+      transform-origin: top left;
+    }
+
   </style>
 </head>
 <body>
@@ -206,8 +228,10 @@
 <h1>Rummy Debug Inspector</h1>
 
 <div>
+  <button id="loadSnapshot">Load Snapshot</button>
   <button id="newGame">New Game</button>
   <button id="next">Next Turn</button>
+  <button id="exportState">Export State</button>
 </div>
 
 <h2>May I Requests</h2>
@@ -250,6 +274,15 @@
     resolvedDiv.style.display = resolvedOpen ? "block" : "none";
   };
 
+  document.getElementById("loadSnapshot").onclick = async () => {
+    const data = await fetch("/debug-state.json").then(r => r.json());
+
+    // Replace the live game with the snapshot
+    game = data;
+
+    render();
+  };
+
   document.getElementById("newGame").onclick = async () => {
     await setupGame();
     render();
@@ -259,7 +292,19 @@
     game.advanceTurn?.();
     render();
   };
+  
+  document.getElementById("exportState").onclick = () => {
+    const blob = new Blob([JSON.stringify(game, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
 
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "debug-state.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+  
   async function setupGame() {
     await loadAtlas();
     game = new LocalGameState();
@@ -624,7 +669,47 @@
       }
 
       wrapper.appendChild(handDiv);
+      renderMelds(wrapper, player);
       playersDiv.appendChild(wrapper);
+    }
+  }
+
+  function renderMelds(container, player) {
+    const playerMelds = game.roundMelds?.filter(m => m.owner.id === player.id) ?? [];
+
+    if (playerMelds.length > 0) {
+      const meldsDiv = document.createElement("div");
+      meldsDiv.className = "melds";
+
+      const meldsHeader = document.createElement("strong");
+      meldsHeader.textContent = "Melds";
+      meldsDiv.appendChild(meldsHeader);
+
+      for (const meld of playerMelds) {
+        const meldDiv = document.createElement("div");
+        meldDiv.className = "meld";
+
+        const title = document.createElement("div");
+        title.className = "meld-title";
+        title.textContent = `${meld.type.toUpperCase()} (${meld.cards.length})`;
+        meldDiv.appendChild(title);
+
+        const cardsDiv = document.createElement("div");
+        cardsDiv.className = "meld-cards";
+
+        for (const meldCard of meld.cards) {
+          const cardDiv = document.createElement("div");
+          cardDiv.className = "card";
+          applyCardStyle(cardDiv, meldCard.card);
+          cardDiv.title = `From: ${meldCard.player.name}`;
+          cardsDiv.appendChild(cardDiv);
+        }
+
+        meldDiv.appendChild(cardsDiv);
+        meldsDiv.appendChild(meldDiv);
+      }
+
+      container.appendChild(meldsDiv);
     }
   }
   

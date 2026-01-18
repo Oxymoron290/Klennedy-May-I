@@ -213,17 +213,19 @@ export class LocalGameState implements GameState {
     const requesterIndex = this.players.findIndex(p => p.id === requester.id);
     if (requesterIndex === -1) return [];
 
-    // If requester is the current player, everyone else votes (full circle)
+    // If requester is the current player, everyone else votes (full circle) except those who are already down.
     if (requesterIndex === this.currentTurn) {
-      return this.players.filter(p => p.id !== requester.id);
+      return this.players.filter(p => p.id !== requester.id && !this.isPlayerDown(p));
     }
 
-    // Otherwise, only players from currentTurn up to (but not including) requester vote.
+    // Otherwise, only players from currentTurn up to (but not including) requester vote except those who are already down.
     const voters: IPlayer[] = [];
     let i = this.currentTurn;
 
     while (i !== requesterIndex) {
-      voters.push(this.players[i]);
+      if (!this.isPlayerDown(this.players[i])) {
+        voters.push(this.players[i]);
+      }
       i = (i + 1) % this.totalPlayers;
     }
 
@@ -356,14 +358,16 @@ export class LocalGameState implements GameState {
     
     // Validate melds according to current round config
     const config = this.roundConfigs[this.currentRound];
+    const requiredRuns = config.runs ?? 0;
+    const requiredSets = config.sets ?? 0;
     const runs = melds.filter(m => m.type === 'run').length;
     const sets = melds.filter(m => m.type === 'set').length;
-    if (config.runs !== runs) {
-      console.log(`Invalid number of runs for this round. Expected ${config.runs}, got ${runs}.`);
+    if (requiredRuns !== runs) {
+      console.log(`Invalid number of runs for this round. Expected ${requiredRuns}, got ${runs}.`);
       return false;
     }
-    if (config.sets !== sets) {
-      console.log(`Invalid number of sets for this round. Expected ${config.sets}, got ${sets}.`);
+    if (requiredSets !== sets) {
+      console.log(`Invalid number of sets for this round. Expected ${requiredSets}, got ${sets}.`);
       return false;
     }
 
@@ -432,12 +436,21 @@ export class LocalGameState implements GameState {
       console.log("Cannot submit melds at this time.");
       return false;
     }
-    
-    // Ensure the cards being added to the meld belong to the player
-    if (meld.owner.id !== currentPlayer.id) {
-      console.log("Meld owner does not match current player.");
+
+    // Cannot append to melds if you have not gone down yet
+    if(!this.isPlayerDown(currentPlayer)) {
+      console.log("Player must go down before adding to melds.");
       return false;
     }
+    
+    cards.forEach(c => {
+      // Ensure the cards being added to the meld belong to the player
+      const cardIndex = currentPlayer.hand.findIndex(card => card.guid === c.guid);
+      if (cardIndex === -1) {
+        console.log("Player does not have card in hand for meld:", c);
+        return false;
+      }
+    });
 
     // Validate that the meld remains valid after adding the cards
     const newMeld: Meld = {
@@ -564,15 +577,20 @@ export class LocalGameState implements GameState {
     this.checkForWin();
   }
 
-  async mayI(player:IPlayer, card: Card): Promise<boolean> {
+  async mayI(player: IPlayer, card: Card): Promise<boolean> {
     if (card.guid !== this.discardPile[this.discardPile.length - 1].guid) {
       console.log("Can only May I the top card of the discard pile.");
       return false;
     }
 
-    let voters = this.getMayIVotersInOrder(player);
+    if (this.isPlayerDown(player)) {
+      console.log("Player has already gone down this round and cannot request May I.");
+      return false;
+    }
 
-    console.log('May I voters in order:', voters.map(v => v.name));
+    const voters = this.getMayIVotersInOrder(player);
+
+    console.log("May I voters in order:", voters.map(v => v.name));
 
     const request: MayIRequest = {
       id: uuidv4(),
@@ -587,14 +605,20 @@ export class LocalGameState implements GameState {
       penaltyCard: null
     };
 
+    // IMPORTANT: create the promise BEFORE any chance of resolving
+    const promise = this.waitForMayIResolution(request);
+
     this.mayIRequests.push(request);
     this.mayIRequest(request);
 
-    if (request.voters.length > 0) {
-      this.mayINextVoter(request, request.voters[0]);
+    // If nobody can vote, requester automatically wins
+    if (request.voters.length === 0) {
+      this.resolveMayI(request, request.player, null);
+      return await promise;
     }
 
-    return await this.waitForMayIResolution(request);
+    this.mayINextVoter(request, request.voters[0]);
+    return await promise;
   }
 
   respondToMayI(player: IPlayer, request: MayIRequest, allow: boolean): void {
@@ -714,6 +738,11 @@ export class LocalGameState implements GameState {
 
   async endTurn(): Promise<void> {
     if (!this.drawnThisTurn || !this.discardedThisTurn) {
+      if(this.getCurrentPlayerHand().length === 0) {
+        console.log("Player has gone out. Ending round.");
+        this.endRound();
+        return;
+      }
       console.log("Must draw and discard before ending turn.");
       return;
     }

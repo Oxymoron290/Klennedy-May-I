@@ -1,0 +1,1740 @@
+{
+  "decks": 3,
+  "totalPlayers": 5,
+  "players": [
+    {
+      "id": "ec397400-30d4-4fd5-8e22-ec22971a7a9f",
+      "name": "Easy Bot 0",
+      "hand": [
+        {
+          "suit": "hearts",
+          "rank": 8,
+          "guid": "d71336db-e9b4-4781-bf51-1d9b4cfec07b"
+        },
+        {
+          "suit": "hearts",
+          "rank": 13,
+          "guid": "bacf31e2-0052-4cbd-8581-0285fc51f789"
+        },
+        {
+          "suit": "spades",
+          "rank": 10,
+          "guid": "e629ddd6-72ce-40ac-bd78-a6cd1bdc8b39"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 9,
+          "guid": "5edb924f-bcd5-4071-8590-d81b64bbade6"
+        },
+        {
+          "suit": "clubs",
+          "rank": 11,
+          "guid": "e7230def-18a8-4e38-9560-a755cd9c3580"
+        },
+        {
+          "suit": "clubs",
+          "rank": 2,
+          "guid": "f904ec5c-22e8-4ad5-bdab-e953b2744df7"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 11,
+          "guid": "1625e7a2-246d-45b7-8941-12a35f715cd1"
+        },
+        {
+          "suit": "hearts",
+          "rank": 3,
+          "guid": "0be569c1-1b4b-4c80-b388-f6dbc8df88f2"
+        },
+        {
+          "suit": "spades",
+          "rank": 13,
+          "guid": "21d83257-5600-4f01-8968-68a1979abb40"
+        },
+        {
+          "suit": "spades",
+          "rank": 3,
+          "guid": "7556b10b-e057-458c-9bac-b7e8daa3dcf5"
+        },
+        {
+          "suit": "hearts",
+          "rank": 8,
+          "guid": "4d7a0881-c2a0-422e-a133-0f0b176e7fae"
+        },
+        {
+          "suit": "clubs",
+          "rank": 4,
+          "guid": "33010048-acff-4342-b3ce-fea3b84a6c62"
+        },
+        {
+          "suit": "clubs",
+          "rank": 2,
+          "guid": "330a13d6-84fd-460d-8587-5c161c7c8f60"
+        }
+      ],
+      "isPlayer": true,
+      "isHuman": false
+    },
+    {
+      "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+      "name": "Hard Bot 1",
+      "hand": [
+        {
+          "suit": "clubs",
+          "rank": 5,
+          "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+        },
+        {
+          "suit": "clubs",
+          "rank": 11,
+          "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+        },
+        {
+          "suit": "spades",
+          "rank": 5,
+          "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 6,
+          "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+        },
+        {
+          "suit": "spades",
+          "rank": 13,
+          "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 9,
+          "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+        },
+        {
+          "suit": "spades",
+          "rank": 9,
+          "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+        },
+        {
+          "suit": "clubs",
+          "rank": 12,
+          "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+        }
+      ],
+      "isPlayer": false,
+      "isHuman": false
+    },
+    {
+      "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+      "name": "Easy Bot 2",
+      "hand": [
+        {
+          "suit": "spades",
+          "rank": 1,
+          "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 2,
+          "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+        },
+        {
+          "suit": "spades",
+          "rank": 8,
+          "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+        },
+        {
+          "suit": "hearts",
+          "rank": 5,
+          "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+        },
+        {
+          "suit": "clubs",
+          "rank": 8,
+          "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 7,
+          "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+        }
+      ],
+      "isPlayer": false,
+      "isHuman": false
+    },
+    {
+      "id": "6e6c1a92-089a-4627-a0fd-b8facf880702",
+      "name": "Hard Bot 3",
+      "hand": [
+        {
+          "suit": "clubs",
+          "rank": 4,
+          "guid": "c358fd89-37e8-402e-8478-a5f80d02ad08"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 11,
+          "guid": "8aaa2233-e62e-4206-b456-19244b324b6a"
+        },
+        {
+          "suit": "spades",
+          "rank": 4,
+          "guid": "2c74b8d0-f518-4fc5-a17d-66adadcf7d5a"
+        },
+        {
+          "suit": "clubs",
+          "rank": 7,
+          "guid": "7d1b51a4-e62f-42bc-b488-98c2b4d2e796"
+        },
+        {
+          "suit": "spades",
+          "rank": 7,
+          "guid": "1b3ccefd-3338-4aad-a2a2-2da7069bb492"
+        },
+        {
+          "suit": "clubs",
+          "rank": 6,
+          "guid": "c3518aa8-0130-4205-8327-e59c44d505d7"
+        },
+        {
+          "suit": "hearts",
+          "rank": 5,
+          "guid": "b4abc90f-94d2-46f4-bc29-e64d83021b91"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 4,
+          "guid": "99ee3de7-095e-4703-965c-732f747fa3fe"
+        },
+        {
+          "suit": "hearts",
+          "rank": 11,
+          "guid": "9845e873-a99f-4669-9868-41bf2942e2fe"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 2,
+          "guid": "22d91195-6fe7-40ac-9adf-7f353ada859a"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 9,
+          "guid": "ddffa541-adc6-4a57-9cc4-e60b2e097618"
+        },
+        {
+          "suit": "hearts",
+          "rank": 13,
+          "guid": "7e9a142a-a61c-4425-a1b2-e65da6f1e0ae"
+        }
+      ],
+      "isPlayer": false,
+      "isHuman": false
+    },
+    {
+      "id": "b9d658a0-db8a-42c9-8c2e-49356c79ed67",
+      "name": "Easy Bot 4",
+      "hand": [
+        {
+          "suit": "spades",
+          "rank": 12,
+          "guid": "9aa89857-ce7e-421b-a276-baf6e09c1e40"
+        },
+        {
+          "suit": "clubs",
+          "rank": 7,
+          "guid": "c4595511-e696-4dea-a01a-17c58b030127"
+        },
+        {
+          "suit": "clubs",
+          "rank": 13,
+          "guid": "40f75496-2c65-426e-8d75-65de6fc03448"
+        },
+        {
+          "suit": "clubs",
+          "rank": 9,
+          "guid": "84899ca9-4ae8-4b14-bc94-a5b4a6d5e213"
+        },
+        {
+          "suit": "clubs",
+          "rank": 5,
+          "guid": "364b0309-a0fd-45c4-b8b7-d818b93f9353"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 12,
+          "guid": "5e5ac957-cfaa-4a77-8518-56da72233496"
+        },
+        {
+          "suit": "diamonds",
+          "rank": 8,
+          "guid": "978f3225-2916-4315-8c72-32795f6e6b83"
+        },
+        {
+          "suit": "hearts",
+          "rank": 8,
+          "guid": "10fe286f-ed85-4a4d-bac7-4a7a0ee49c9d"
+        },
+        {
+          "suit": "spades",
+          "rank": 8,
+          "guid": "ad8312de-383e-49ff-8d82-8fd09ce0d018"
+        },
+        {
+          "suit": "hearts",
+          "rank": 6,
+          "guid": "2c13a31b-d6f0-4a3f-863b-0a686cc01f6b"
+        },
+        {
+          "suit": "spades",
+          "rank": 6,
+          "guid": "bab22fac-a3bb-47e8-ad10-dadc679444f1"
+        }
+      ],
+      "isPlayer": false,
+      "isHuman": false
+    }
+  ],
+  "drawPile": [
+    {
+      "suit": "diamonds",
+      "rank": 5,
+      "guid": "e588c658-503b-4bdc-98f3-8a8398119c0c"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 4,
+      "guid": "ab409279-6ba3-4f8c-81d6-077f6270b812"
+    },
+    {
+      "suit": "hearts",
+      "rank": 10,
+      "guid": "4b00b731-a082-44d1-8425-4b0f9a46f793"
+    },
+    {
+      "suit": "clubs",
+      "rank": 13,
+      "guid": "5b7494e6-df3b-453f-9303-d7ea51d3ec7c"
+    },
+    {
+      "suit": "spades",
+      "rank": 11,
+      "guid": "8de364ea-1c9a-482c-97c6-fe39aa33e128"
+    },
+    {
+      "suit": "hearts",
+      "rank": 2,
+      "guid": "2813e40a-9fdb-4560-babc-bb67af5bc58e"
+    },
+    {
+      "suit": "clubs",
+      "rank": 1,
+      "guid": "40cecf4c-1f52-47bb-acd9-0fd23570a15f"
+    },
+    {
+      "suit": "clubs",
+      "rank": 6,
+      "guid": "0bcbe4b5-398c-4c5c-9ba1-8170e2e136e6"
+    },
+    {
+      "suit": "hearts",
+      "rank": 3,
+      "guid": "923a9ed2-6b92-4192-b256-06cd4821044f"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 3,
+      "guid": "3f31df2d-0689-4a58-9e37-91dfe3b06964"
+    },
+    {
+      "suit": "hearts",
+      "rank": 11,
+      "guid": "42cef1a9-ad91-418c-a865-7482a7d37ef6"
+    },
+    {
+      "suit": "hearts",
+      "rank": 6,
+      "guid": "9770762f-e705-4eb9-8d73-e296973e14f8"
+    },
+    {
+      "suit": "spades",
+      "rank": 12,
+      "guid": "4980d5c4-8411-4bc3-aaf4-45ae9a7a8bc0"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 6,
+      "guid": "f38089fa-6594-47ca-b78f-d2c15f297827"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 11,
+      "guid": "f6f28fcb-6c81-4cac-bdb1-c0758db4f867"
+    },
+    {
+      "suit": "clubs",
+      "rank": 3,
+      "guid": "4f5ef3cc-70b0-427e-8451-1956859b42ed"
+    },
+    {
+      "suit": "hearts",
+      "rank": 12,
+      "guid": "037a0c6e-9bfd-4914-a31b-f135c3edfe00"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 1,
+      "guid": "dc82868b-ba7f-43b5-a690-1a636b41645a"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 13,
+      "guid": "4d28796b-32fa-4d55-aa8f-1c3d8d0ad338"
+    },
+    {
+      "suit": "spades",
+      "rank": 3,
+      "guid": "db1af992-5e67-44d6-bddd-15f752cf1a58"
+    },
+    {
+      "suit": "clubs",
+      "rank": 7,
+      "guid": "fa2992d1-d946-4961-ab7f-9cbe7757d176"
+    },
+    {
+      "suit": "spades",
+      "rank": 2,
+      "guid": "749ed3e2-6bd7-4eaf-a6b7-a1556efecd2d"
+    },
+    {
+      "suit": "clubs",
+      "rank": 12,
+      "guid": "8daed5a0-7217-4743-ac1b-0c3d9d55e3ed"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 13,
+      "guid": "da4832cc-a33c-4468-9fec-92564c273487"
+    },
+    {
+      "suit": "spades",
+      "rank": 11,
+      "guid": "d542cfe7-d094-44f3-97ac-b3aa33837a50"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 7,
+      "guid": "45323875-dff4-4dc3-a5de-e47944c77c07"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 1,
+      "guid": "cc931c63-85c4-4ae5-8e58-c589e969dea5"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 13,
+      "guid": "6eefa663-2a9c-4116-a270-9d0ee04d502e"
+    },
+    {
+      "suit": "spades",
+      "rank": 3,
+      "guid": "ad291d06-f0f9-44d9-a5d3-687667b5b22d"
+    },
+    {
+      "suit": "clubs",
+      "rank": 6,
+      "guid": "360203b8-fd80-4382-8906-a5ea11edc40c"
+    },
+    {
+      "suit": "hearts",
+      "rank": 3,
+      "guid": "9bba2faa-c989-4314-909d-c471580a0225"
+    },
+    {
+      "suit": "hearts",
+      "rank": 7,
+      "guid": "f14c07f9-3b17-43ab-bbd1-d94c600c54a8"
+    },
+    {
+      "suit": "spades",
+      "rank": 5,
+      "guid": "0f161018-d747-479d-945e-d2ab083a96ef"
+    },
+    {
+      "suit": "spades",
+      "rank": 1,
+      "guid": "c0bdc92b-846a-4e38-9b73-ae84cf614009"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 5,
+      "guid": "d3e81443-b943-47a3-8673-bf4c2705b5e4"
+    },
+    {
+      "suit": "clubs",
+      "rank": 12,
+      "guid": "bb6f58e7-2a1f-41ce-bba4-299f29d06a78"
+    },
+    {
+      "suit": "hearts",
+      "rank": 13,
+      "guid": "5469ef2c-5bb4-4132-acd1-1c1f943bee29"
+    },
+    {
+      "suit": "hearts",
+      "rank": 12,
+      "guid": "4b1c1406-561c-4fa5-8685-ea9633424350"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 3,
+      "guid": "57d1c34d-a767-414a-88e0-2a382bd118ab"
+    },
+    {
+      "suit": "spades",
+      "rank": 8,
+      "guid": "1d806c90-8bf8-438a-8065-d7baf254099b"
+    },
+    {
+      "suit": "clubs",
+      "rank": 10,
+      "guid": "82a5c90c-9f0d-4443-a87d-8ab3dbf598c0"
+    },
+    {
+      "suit": "hearts",
+      "rank": 1,
+      "guid": "71864c34-104b-4de2-85fb-2c5a3caf99b6"
+    },
+    {
+      "suit": "clubs",
+      "rank": 13,
+      "guid": "84258d1e-2222-4b1f-8634-6ff61894ac01"
+    },
+    {
+      "suit": "spades",
+      "rank": 13,
+      "guid": "4073d835-6931-4858-bfe0-9fa4e2064902"
+    },
+    {
+      "suit": "spades",
+      "rank": 4,
+      "guid": "cbc44634-32e6-45b2-9cd2-5bc565f25356"
+    },
+    {
+      "suit": "spades",
+      "rank": 6,
+      "guid": "6c8a8c33-24ac-4082-9af6-6834759011c2"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 1,
+      "guid": "51d6f82c-97d2-463a-aff4-6d6d775a56fd"
+    },
+    {
+      "suit": "hearts",
+      "rank": 6,
+      "guid": "081027b9-cf0f-4597-8068-931ce9240a02"
+    },
+    {
+      "suit": "clubs",
+      "rank": 1,
+      "guid": "0cf452b7-2f4b-41c0-a7e0-b511a922ce97"
+    },
+    {
+      "suit": "spades",
+      "rank": 6,
+      "guid": "5b5a4d0d-d2f6-4c9d-bce8-beed72e468e0"
+    },
+    {
+      "suit": "clubs",
+      "rank": 1,
+      "guid": "70d2d04a-d142-4924-83de-9e62f8816fe7"
+    },
+    {
+      "suit": "clubs",
+      "rank": 8,
+      "guid": "ad0660f7-d9cf-4667-beb4-4e54313ebfff"
+    },
+    {
+      "suit": "clubs",
+      "rank": 9,
+      "guid": "f9666f44-0410-480f-9730-cf98d45c7d8b"
+    },
+    {
+      "suit": "hearts",
+      "rank": 5,
+      "guid": "a60369df-63dd-448c-85bc-bcf4f57440f6"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 10,
+      "guid": "c29181de-a3ca-4ccd-8c58-37b5f7675249"
+    },
+    {
+      "suit": "spades",
+      "rank": 10,
+      "guid": "767e6340-a561-40d7-b134-b9541e4c9077"
+    },
+    {
+      "suit": "spades",
+      "rank": 2,
+      "guid": "93a41bbc-4c77-48cc-9718-e39b76f65640"
+    },
+    {
+      "suit": "hearts",
+      "rank": 1,
+      "guid": "74595dbe-c23c-49e6-a6fe-21a13229ae1d"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 10,
+      "guid": "6640e2a2-ad23-4502-aea0-ca85d735eef9"
+    },
+    {
+      "suit": "clubs",
+      "rank": 3,
+      "guid": "927e9bb8-e4e7-4a3f-a01d-e8c9438bba45"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 3,
+      "guid": "f9c85d65-ac5a-4275-a100-8c631d9e5ed5"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 2,
+      "guid": "bfd086e0-e11a-471c-b3f7-32470281cca2"
+    },
+    {
+      "suit": "spades",
+      "rank": 1,
+      "guid": "4f2273ba-0bc8-4485-a311-392edb3d7b92"
+    },
+    {
+      "suit": "hearts",
+      "rank": 9,
+      "guid": "f2e41a4b-fda2-4afd-96fe-25428e58dc58"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 6,
+      "guid": "be40c721-e556-4ea8-8731-416230af2f6b"
+    },
+    {
+      "suit": "clubs",
+      "rank": 2,
+      "guid": "ba8c6526-9ee0-4c35-ae6b-dc2e37251da6"
+    },
+    {
+      "suit": "clubs",
+      "rank": 3,
+      "guid": "2cee78f3-060e-4820-86c6-15f73835ad6e"
+    },
+    {
+      "suit": "clubs",
+      "rank": 5,
+      "guid": "330f4bdb-29c7-4ffc-8ae7-985ee50133a4"
+    },
+    {
+      "suit": "hearts",
+      "rank": 1,
+      "guid": "798eb6b4-c831-4740-9f5c-26186c1656bd"
+    },
+    {
+      "suit": "hearts",
+      "rank": 9,
+      "guid": "9597603e-ed66-444d-8fc7-b3f18972341f"
+    },
+    {
+      "suit": "clubs",
+      "rank": 8,
+      "guid": "2ec02feb-e6e9-4fe3-a9f2-0473d9d37ccf"
+    },
+    {
+      "suit": "spades",
+      "rank": 5,
+      "guid": "70cc0084-ca52-482f-8998-712c95ddfe2d"
+    },
+    {
+      "suit": "spades",
+      "rank": 2,
+      "guid": "11dc0586-b874-451e-be31-efae8c96589a"
+    },
+    {
+      "suit": "hearts",
+      "rank": 4,
+      "guid": "39c02228-30c6-4ec1-909c-c6165d346cdf"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 8,
+      "guid": "6bee6d0c-85d4-433f-9723-ec1e24291eca"
+    },
+    {
+      "suit": "hearts",
+      "rank": 7,
+      "guid": "0337d1f7-7203-4355-8294-71406f04fc08"
+    },
+    {
+      "suit": "hearts",
+      "rank": 2,
+      "guid": "90f55238-4857-4937-af79-d29b73a7efaf"
+    }
+  ],
+  "discardPile": [
+    {
+      "suit": "clubs",
+      "rank": 4,
+      "guid": "c69018f0-437d-445a-a93a-4f165b2aca28"
+    },
+    {
+      "suit": "clubs",
+      "rank": 11,
+      "guid": "e22e9669-d3ff-47fa-aee4-2cf2ec2e6599"
+    },
+    {
+      "suit": "hearts",
+      "rank": 2,
+      "guid": "23af21e7-3d05-460e-b9f8-5e350ad689d2"
+    },
+    {
+      "suit": "clubs",
+      "rank": 10,
+      "guid": "906d7006-1066-4e3d-bcf9-8ec91bffbb8e"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 5,
+      "guid": "1c623d5a-7176-427e-9f88-356cf01073e4"
+    },
+    {
+      "suit": "hearts",
+      "rank": 11,
+      "guid": "64770dc5-0b94-4955-b386-4330b47e905f"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 7,
+      "guid": "3447bca2-98f9-48e1-b1a4-818d090f103b"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 12,
+      "guid": "6d18ba50-b67c-4fb3-b32d-511b38a6d163"
+    },
+    {
+      "suit": "hearts",
+      "rank": 10,
+      "guid": "73a24a52-103c-409f-95cf-7f793d2c870f"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 8,
+      "guid": "4127ea17-0e71-45b1-84f1-e0ad376c8222"
+    },
+    {
+      "suit": "diamonds",
+      "rank": 12,
+      "guid": "a49a39b8-f610-4527-bc33-c97e91601ee3"
+    },
+    {
+      "suit": "hearts",
+      "rank": 12,
+      "guid": "e66f1033-89a7-4afc-9c50-f71aff1baf67"
+    },
+    {
+      "suit": "hearts",
+      "rank": 10,
+      "guid": "b2750366-24aa-4a17-bd7d-5bfdf7495145"
+    },
+    {
+      "suit": "spades",
+      "rank": 11,
+      "guid": "2948eb81-0254-4754-848d-aca04559a848"
+    },
+    {
+      "suit": "spades",
+      "rank": 12,
+      "guid": "193da6f3-4905-4232-bdb5-865425f5e8e2"
+    }
+  ],
+  "currentTurn": 3,
+  "currentRound": 0,
+  "roundConfigs": [
+    {
+      "sets": 2
+    },
+    {
+      "runs": 1,
+      "sets": 1
+    },
+    {
+      "runs": 2
+    },
+    {
+      "sets": 3
+    },
+    {
+      "runs": 1,
+      "sets": 2
+    },
+    {
+      "runs": 2,
+      "sets": 1
+    },
+    {
+      "runs": 3
+    }
+  ],
+  "roundMelds": [
+    {
+      "id": "5f1d6f15-697f-4824-8c6c-96c64e2bc447",
+      "type": "set",
+      "owner": {
+        "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+        "name": "Hard Bot 1",
+        "hand": [
+          {
+            "suit": "clubs",
+            "rank": 5,
+            "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+          },
+          {
+            "suit": "clubs",
+            "rank": 11,
+            "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+          },
+          {
+            "suit": "spades",
+            "rank": 5,
+            "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+          },
+          {
+            "suit": "diamonds",
+            "rank": 6,
+            "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+          },
+          {
+            "suit": "spades",
+            "rank": 13,
+            "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+          },
+          {
+            "suit": "diamonds",
+            "rank": 9,
+            "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+          },
+          {
+            "suit": "spades",
+            "rank": 9,
+            "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+          },
+          {
+            "suit": "clubs",
+            "rank": 12,
+            "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+          }
+        ],
+        "isPlayer": false,
+        "isHuman": false
+      },
+      "cards": [
+        {
+          "player": {
+            "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+            "name": "Hard Bot 1",
+            "hand": [
+              {
+                "suit": "clubs",
+                "rank": 5,
+                "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+              },
+              {
+                "suit": "clubs",
+                "rank": 11,
+                "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+              },
+              {
+                "suit": "spades",
+                "rank": 5,
+                "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 6,
+                "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+              },
+              {
+                "suit": "spades",
+                "rank": 13,
+                "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 9,
+                "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+              },
+              {
+                "suit": "spades",
+                "rank": 9,
+                "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+              },
+              {
+                "suit": "clubs",
+                "rank": 12,
+                "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "hearts",
+            "rank": 7,
+            "guid": "2574a185-76d3-4b81-8571-1f020bae928a"
+          }
+        },
+        {
+          "player": {
+            "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+            "name": "Hard Bot 1",
+            "hand": [
+              {
+                "suit": "clubs",
+                "rank": 5,
+                "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+              },
+              {
+                "suit": "clubs",
+                "rank": 11,
+                "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+              },
+              {
+                "suit": "spades",
+                "rank": 5,
+                "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 6,
+                "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+              },
+              {
+                "suit": "spades",
+                "rank": 13,
+                "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 9,
+                "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+              },
+              {
+                "suit": "spades",
+                "rank": 9,
+                "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+              },
+              {
+                "suit": "clubs",
+                "rank": 12,
+                "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "spades",
+            "rank": 7,
+            "guid": "782b5b6c-9484-4eb4-bb1c-d7c317bd2795"
+          }
+        },
+        {
+          "player": {
+            "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+            "name": "Hard Bot 1",
+            "hand": [
+              {
+                "suit": "clubs",
+                "rank": 5,
+                "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+              },
+              {
+                "suit": "clubs",
+                "rank": 11,
+                "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+              },
+              {
+                "suit": "spades",
+                "rank": 5,
+                "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 6,
+                "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+              },
+              {
+                "suit": "spades",
+                "rank": 13,
+                "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 9,
+                "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+              },
+              {
+                "suit": "spades",
+                "rank": 9,
+                "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+              },
+              {
+                "suit": "clubs",
+                "rank": 12,
+                "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "spades",
+            "rank": 7,
+            "guid": "733ceef3-0cf1-43ef-9df0-3ae0558e69da"
+          }
+        }
+      ]
+    },
+    {
+      "id": "43719854-2c80-479e-92c4-c6346385fd0a",
+      "type": "set",
+      "owner": {
+        "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+        "name": "Hard Bot 1",
+        "hand": [
+          {
+            "suit": "clubs",
+            "rank": 5,
+            "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+          },
+          {
+            "suit": "clubs",
+            "rank": 11,
+            "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+          },
+          {
+            "suit": "spades",
+            "rank": 5,
+            "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+          },
+          {
+            "suit": "diamonds",
+            "rank": 6,
+            "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+          },
+          {
+            "suit": "spades",
+            "rank": 13,
+            "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+          },
+          {
+            "suit": "diamonds",
+            "rank": 9,
+            "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+          },
+          {
+            "suit": "spades",
+            "rank": 9,
+            "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+          },
+          {
+            "suit": "clubs",
+            "rank": 12,
+            "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+          }
+        ],
+        "isPlayer": false,
+        "isHuman": false
+      },
+      "cards": [
+        {
+          "player": {
+            "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+            "name": "Hard Bot 1",
+            "hand": [
+              {
+                "suit": "clubs",
+                "rank": 5,
+                "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+              },
+              {
+                "suit": "clubs",
+                "rank": 11,
+                "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+              },
+              {
+                "suit": "spades",
+                "rank": 5,
+                "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 6,
+                "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+              },
+              {
+                "suit": "spades",
+                "rank": 13,
+                "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 9,
+                "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+              },
+              {
+                "suit": "spades",
+                "rank": 9,
+                "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+              },
+              {
+                "suit": "clubs",
+                "rank": 12,
+                "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "diamonds",
+            "rank": 4,
+            "guid": "3606404c-6258-4960-a804-61ab738b7147"
+          }
+        },
+        {
+          "player": {
+            "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+            "name": "Hard Bot 1",
+            "hand": [
+              {
+                "suit": "clubs",
+                "rank": 5,
+                "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+              },
+              {
+                "suit": "clubs",
+                "rank": 11,
+                "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+              },
+              {
+                "suit": "spades",
+                "rank": 5,
+                "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 6,
+                "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+              },
+              {
+                "suit": "spades",
+                "rank": 13,
+                "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 9,
+                "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+              },
+              {
+                "suit": "spades",
+                "rank": 9,
+                "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+              },
+              {
+                "suit": "clubs",
+                "rank": 12,
+                "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "hearts",
+            "rank": 4,
+            "guid": "a65587d6-690b-4be8-afb4-dcd296895917"
+          }
+        },
+        {
+          "player": {
+            "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+            "name": "Hard Bot 1",
+            "hand": [
+              {
+                "suit": "clubs",
+                "rank": 5,
+                "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+              },
+              {
+                "suit": "clubs",
+                "rank": 11,
+                "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+              },
+              {
+                "suit": "spades",
+                "rank": 5,
+                "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 6,
+                "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+              },
+              {
+                "suit": "spades",
+                "rank": 13,
+                "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 9,
+                "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+              },
+              {
+                "suit": "spades",
+                "rank": 9,
+                "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+              },
+              {
+                "suit": "clubs",
+                "rank": 12,
+                "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "hearts",
+            "rank": 4,
+            "guid": "67621cd8-9afb-4a33-aae4-a2a6dcb7e764"
+          }
+        },
+        {
+          "player": {
+            "id": "94b763e6-09ae-480d-a65e-72976a5369a0",
+            "name": "Hard Bot 1",
+            "hand": [
+              {
+                "suit": "clubs",
+                "rank": 5,
+                "guid": "d75f0593-af4e-4f7c-8263-c836c58ee267"
+              },
+              {
+                "suit": "clubs",
+                "rank": 11,
+                "guid": "b2912279-a3e6-42cd-ad38-f41d89202c74"
+              },
+              {
+                "suit": "spades",
+                "rank": 5,
+                "guid": "b1bc61c3-40cc-4dc7-8a7f-c4bbb878f676"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 6,
+                "guid": "673c43c7-8f93-4a9f-8598-0a0679ac1f95"
+              },
+              {
+                "suit": "spades",
+                "rank": 13,
+                "guid": "a3bc4450-855a-4de8-81fa-8323d57d29ec"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 9,
+                "guid": "e36821e2-cf8f-406b-861f-82c2ad7bb64b"
+              },
+              {
+                "suit": "spades",
+                "rank": 9,
+                "guid": "3cd93853-e01b-4d74-8088-1f9e40fbaa02"
+              },
+              {
+                "suit": "clubs",
+                "rank": 12,
+                "guid": "60711a2a-6b9f-401e-be64-40cd5b421bac"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "spades",
+            "rank": 4,
+            "guid": "64d0b717-681c-4731-af2b-026bbc1ae656"
+          }
+        }
+      ]
+    },
+    {
+      "id": "1d2771da-6049-45f9-9e9c-6a6ba8076a53",
+      "type": "set",
+      "owner": {
+        "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+        "name": "Easy Bot 2",
+        "hand": [
+          {
+            "suit": "spades",
+            "rank": 1,
+            "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+          },
+          {
+            "suit": "diamonds",
+            "rank": 2,
+            "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+          },
+          {
+            "suit": "spades",
+            "rank": 8,
+            "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+          },
+          {
+            "suit": "hearts",
+            "rank": 5,
+            "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+          },
+          {
+            "suit": "clubs",
+            "rank": 8,
+            "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+          },
+          {
+            "suit": "diamonds",
+            "rank": 7,
+            "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+          }
+        ],
+        "isPlayer": false,
+        "isHuman": false
+      },
+      "cards": [
+        {
+          "player": {
+            "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+            "name": "Easy Bot 2",
+            "hand": [
+              {
+                "suit": "spades",
+                "rank": 1,
+                "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 2,
+                "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+              },
+              {
+                "suit": "spades",
+                "rank": 8,
+                "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+              },
+              {
+                "suit": "hearts",
+                "rank": 5,
+                "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+              },
+              {
+                "suit": "clubs",
+                "rank": 8,
+                "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 7,
+                "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "clubs",
+            "rank": 10,
+            "guid": "4b996a5e-a3d9-4ea4-a396-0888f246c6c4"
+          }
+        },
+        {
+          "player": {
+            "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+            "name": "Easy Bot 2",
+            "hand": [
+              {
+                "suit": "spades",
+                "rank": 1,
+                "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 2,
+                "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+              },
+              {
+                "suit": "spades",
+                "rank": 8,
+                "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+              },
+              {
+                "suit": "hearts",
+                "rank": 5,
+                "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+              },
+              {
+                "suit": "clubs",
+                "rank": 8,
+                "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 7,
+                "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "spades",
+            "rank": 10,
+            "guid": "5a1b55dd-651f-4c71-ad7b-95e538780f10"
+          }
+        },
+        {
+          "player": {
+            "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+            "name": "Easy Bot 2",
+            "hand": [
+              {
+                "suit": "spades",
+                "rank": 1,
+                "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 2,
+                "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+              },
+              {
+                "suit": "spades",
+                "rank": 8,
+                "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+              },
+              {
+                "suit": "hearts",
+                "rank": 5,
+                "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+              },
+              {
+                "suit": "clubs",
+                "rank": 8,
+                "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 7,
+                "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "diamonds",
+            "rank": 10,
+            "guid": "47b5bd9a-8410-4834-a0ca-6fae34f852e0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "17741579-9315-473b-bf1b-0ddcbac34999",
+      "type": "set",
+      "owner": {
+        "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+        "name": "Easy Bot 2",
+        "hand": [
+          {
+            "suit": "spades",
+            "rank": 1,
+            "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+          },
+          {
+            "suit": "diamonds",
+            "rank": 2,
+            "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+          },
+          {
+            "suit": "spades",
+            "rank": 8,
+            "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+          },
+          {
+            "suit": "hearts",
+            "rank": 5,
+            "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+          },
+          {
+            "suit": "clubs",
+            "rank": 8,
+            "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+          },
+          {
+            "suit": "diamonds",
+            "rank": 7,
+            "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+          }
+        ],
+        "isPlayer": false,
+        "isHuman": false
+      },
+      "cards": [
+        {
+          "player": {
+            "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+            "name": "Easy Bot 2",
+            "hand": [
+              {
+                "suit": "spades",
+                "rank": 1,
+                "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 2,
+                "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+              },
+              {
+                "suit": "spades",
+                "rank": 8,
+                "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+              },
+              {
+                "suit": "hearts",
+                "rank": 5,
+                "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+              },
+              {
+                "suit": "clubs",
+                "rank": 8,
+                "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 7,
+                "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "spades",
+            "rank": 9,
+            "guid": "09f36b02-5f09-4f3e-8925-e4ab1f2c0ebb"
+          }
+        },
+        {
+          "player": {
+            "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+            "name": "Easy Bot 2",
+            "hand": [
+              {
+                "suit": "spades",
+                "rank": 1,
+                "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 2,
+                "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+              },
+              {
+                "suit": "spades",
+                "rank": 8,
+                "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+              },
+              {
+                "suit": "hearts",
+                "rank": 5,
+                "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+              },
+              {
+                "suit": "clubs",
+                "rank": 8,
+                "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 7,
+                "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "clubs",
+            "rank": 9,
+            "guid": "c4c39b49-3b6b-4413-ab97-5d8a6bde02b5"
+          }
+        },
+        {
+          "player": {
+            "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+            "name": "Easy Bot 2",
+            "hand": [
+              {
+                "suit": "spades",
+                "rank": 1,
+                "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 2,
+                "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+              },
+              {
+                "suit": "spades",
+                "rank": 8,
+                "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+              },
+              {
+                "suit": "hearts",
+                "rank": 5,
+                "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+              },
+              {
+                "suit": "clubs",
+                "rank": 8,
+                "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 7,
+                "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "spades",
+            "rank": 9,
+            "guid": "09a09957-53b4-421f-a7be-98c58e52ce86"
+          }
+        },
+        {
+          "player": {
+            "id": "073acc36-6539-4d75-90bc-b75d3da90d9e",
+            "name": "Easy Bot 2",
+            "hand": [
+              {
+                "suit": "spades",
+                "rank": 1,
+                "guid": "a1fd6459-bef5-4fe3-aca0-b34b251bdc72"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 2,
+                "guid": "7be2d2f3-48e9-4b23-9a9a-d49adfbccd26"
+              },
+              {
+                "suit": "spades",
+                "rank": 8,
+                "guid": "198a1edf-d9f6-440f-8ff3-f9a6e90e9149"
+              },
+              {
+                "suit": "hearts",
+                "rank": 5,
+                "guid": "d06eb4b4-22fb-4a37-9518-788174ae2953"
+              },
+              {
+                "suit": "clubs",
+                "rank": 8,
+                "guid": "49b8a799-5981-47b8-ac98-6c9ba9183bfa"
+              },
+              {
+                "suit": "diamonds",
+                "rank": 7,
+                "guid": "866c474b-83c3-4625-b08f-f5ec4a1d4880"
+              }
+            ],
+            "isPlayer": false,
+            "isHuman": false
+          },
+          "card": {
+            "suit": "hearts",
+            "rank": 9,
+            "guid": "724fc1ee-6d68-42e0-bbd8-b76293ddd8d2"
+          }
+        }
+      ]
+    }
+  ],
+  "mayIRequests": [],
+  "cardOnTable": null,
+  "drawnThisTurn": true,
+  "discardedThisTurn": false,
+  "onGameStartCallbacks": [],
+  "onGameEndCallbacks": [],
+  "onRoundStartCallbacks": [],
+  "onRoundEndCallbacks": [],
+  "onTurnAdvanceCallbacks": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "onOpponentDrawCallbacks": [
+    null
+  ],
+  "onOpponentDiscardCallbacks": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "onOpponentDrawFromDiscardCallbacks": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "onMayIRequestCallbacks": [
+    null
+  ],
+  "onMayIResponseCallbacks": [
+    null
+  ],
+  "onMayIResolvedCallbacks": [
+    null
+  ],
+  "onMayINextVoterCallbacks": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "onMeldSubmittedCallbacks": [],
+  "onMeldAppendedCallbacks": []
+}

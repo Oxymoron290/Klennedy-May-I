@@ -103,6 +103,9 @@ export class AIPlayer {
   }
 
   private async considerRequestingMayI() {
+    if(this.game.isPlayerDown(this.player)) {
+      return; // cannot request May I if down
+    }
     // TODO: implement logic to decide whether to request May I
     // Look at the top card of the discard pile and see if it helps form melds
     if (Math.random() < this.profile.requestMayIChance) {
