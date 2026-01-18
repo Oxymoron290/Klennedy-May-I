@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import io, { Socket } from 'socket.io-client';
 import { LocalGameState } from '../models/LocalGameState';
 import { MultiplayerGameState } from '../models/MultiplayerGameState';
-import { Card, Player, GameState, MayIRequest, values } from '../models/GameState';
+import { GameState, MayIRequest } from '../models/GameState';
+import { Card } from '../models/Types';
+import { IPlayer } from '../models/Player';
 import { AIPlayer, EasyBot, HardBot } from "../models/AIPlayer";
 
 export default class GameScene extends Phaser.Scene {
@@ -97,15 +99,15 @@ export default class GameScene extends Phaser.Scene {
         }
       });
 
-      this.gameState!.onOpponentDraw((player: Player) => {
+      this.gameState!.onOpponentDraw((player: IPlayer) => {
         console.log(`${player.name} drew a card.`);
         this.animateOpponentDraw(player);
       });
-      this.gameState!.onOpponentDrawFromDiscard((player: Player, card: Card) => {
+      this.gameState!.onOpponentDrawFromDiscard((player: IPlayer, card: Card) => {
         console.log(`${player.name} drew from discard: ${card?.suit} ${card?.rank}`);
         this.animateOpponentDiscardDraw(player);
       });
-      this.gameState!.onOpponentDiscard((player: Player, card: Card) => {
+      this.gameState!.onOpponentDiscard((player: IPlayer, card: Card) => {
         console.log(`${player.name} discarded ${card?.suit} ${card?.rank}`);
         this.animateOpponentDiscard(player, card);
       });
@@ -371,7 +373,7 @@ export default class GameScene extends Phaser.Scene {
     const player = this.gameState!.players.find(p => p.isPlayer)!;
     this.renderHand(player.hand);
 
-    this.renderCardSummary(player.hand);
+    this.renderCardSummary(player);
 
     this.renderDiscardPile(this.gameState.discardPile);
 
@@ -482,7 +484,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  private animateCardsToOpponent(player: Player, sprites: Phaser.GameObjects.Sprite[]) {
+  private animateCardsToOpponent(player: IPlayer, sprites: Phaser.GameObjects.Sprite[]) {
     const opponents = this.gameState!.players.filter(p => !p.isPlayer);
     const index = opponents.findIndex(p => p.id === player.id);
     const targetContainer = this.opponentHandContainers[index];
@@ -1006,7 +1008,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  private animateOpponentDraw(player: Player) {
+  private animateOpponentDraw(player: IPlayer) {
     const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
     const opponentIndex = opponents.findIndex(opp => opp.id === player.id);
     if (opponentIndex === -1) return;
@@ -1043,7 +1045,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  private animateOpponentDiscardDraw(player: Player) {
+  private animateOpponentDiscardDraw(player: IPlayer) {
     const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
     const opponentIndex = opponents.findIndex(opp => opp.id === player.id);
     if (opponentIndex === -1) return;
@@ -1073,7 +1075,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  private animateOpponentDiscard(player: Player, card: Card) {
+  private animateOpponentDiscard(player: IPlayer, card: Card) {
     const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
     const opponentIndex = opponents.findIndex(opp => opp.id === player.id);
     if (opponentIndex === -1) return;
@@ -1106,8 +1108,8 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  private renderCardSummary(hand: Card[]) {
-    const { buckets, grandCount, grandTotal } = this.computeHandSummary(hand);
+  private renderCardSummary(player: IPlayer) {
+    const { buckets, grandCount, grandTotal } = player!.getHandSummary();
 
     this.cardSummaryContainer.removeAll(true);
 
@@ -1149,41 +1151,4 @@ export default class GameScene extends Phaser.Scene {
     this.cardSummaryContainer.add(this.add.text(-10, 75, `${grandCount}`, { fontSize: "14px", color: "#ffffff" }));
     this.cardSummaryContainer.add(this.add.text(70, 75, `${grandTotal}`, { fontSize: "14px", color: "#00ff88" }));
   }
-
-  private computeHandSummary(hand: Card[]) {
-    const buckets: Record<BucketValue, Bucket> = {
-      5: { count: 0, total: 0 },
-      10: { count: 0, total: 0 },
-      15: { count: 0, total: 0 },
-    };
-
-    hand.forEach(card => {
-      const value = values[card.rank] as BucketValue | undefined;
-
-      if (value === 5 || value === 10 || value === 15) {
-        buckets[value].count++;
-        buckets[value].total += value;
-      }
-    });
-
-    const grandCount =
-      buckets[5].count + buckets[10].count + buckets[15].count;
-    const grandTotal =
-      buckets[5].total + buckets[10].total + buckets[15].total;
-
-    return { buckets, grandCount, grandTotal };
-  }
 }
-
-type BucketValue = 5 | 10 | 15;
-
-type Bucket = {
-  count: number;
-  total: number;
-};
-
-const buckets: Record<BucketValue, Bucket> = {
-  5: { count: 0, total: 0 },
-  10: { count: 0, total: 0 },
-  15: { count: 0, total: 0 },
-};

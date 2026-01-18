@@ -1,9 +1,11 @@
 import { Socket } from 'socket.io-client'
-import { Card, Player, GameState, MayIRequest, MayIResponse } from './GameState'
+import { GameState, MayIRequest, MayIResponse } from './GameState'
+import { Card } from './Types';
+import { IPlayer, Meld } from './Player';
 
 export class MultiplayerGameState implements GameState {
   private socket: Socket;
-  players: Player[] = [];
+  players: IPlayer[] = [];
   drawPile: Card[] = [];
   discardPile: Card[] = [];
   currentTurn: number = 0;
@@ -11,14 +13,17 @@ export class MultiplayerGameState implements GameState {
   cardOnTable: Card | null = null;
   drawnThisTurn: boolean = false;
   
-  private onOpponentDrawCallbacks: Array<(player: Player) => void> = [];
-  private onOpponentDiscardCallbacks: Array<(player: Player, card: Card) => void> = [];
-  private onOpponentDrawFromDiscardCallbacks: Array<(player: Player, card: Card) => void> = [];
-  private onTurnAdvanceCallbacks: Array<(player: Player) => void> = [];
+
+  private onRoundStartCallbacks: Array<() => void> = [];
+  private onRoundEndCallbacks: Array<() => void> = [];
+  private onTurnAdvanceCallbacks: Array<(player: IPlayer) => void> = [];
+  private onOpponentDrawCallbacks: Array<(player: IPlayer) => void> = [];
+  private onOpponentDiscardCallbacks: Array<(player: IPlayer, card: Card) => void> = [];
+  private onOpponentDrawFromDiscardCallbacks: Array<(player: IPlayer, card: Card) => void> = [];
   private onMayIRequestCallbacks: Array<(request: MayIRequest) => void> = [];
   private onMayIResponseCallbacks: Array<(request: MayIRequest, response: MayIResponse) => void> = [];
   private onMayIResolvedCallbacks: Array<(request: MayIRequest, accepted: boolean) => void> = [];
-  private onMayINextVoterCallbacks: Array<(request: MayIRequest, nextVoter: Player) => void> = [];
+  private onMayINextVoterCallbacks: Array<(request: MayIRequest, nextVoter: IPlayer) => void> = [];
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -31,7 +36,25 @@ export class MultiplayerGameState implements GameState {
     // Optional: request initial state
     this.socket.emit('requestGameState');
   }
-
+  getRoundMelds(): Meld[] {
+    throw new Error('Method not implemented.');
+  }
+  isPlayerDown(player: IPlayer): boolean {
+    throw new Error('Method not implemented.');
+  }
+  onGameStart(callback: () => void): void {
+    throw new Error('Method not implemented.');
+  }
+  onGameEnd(callback: () => void): void {
+    throw new Error('Method not implemented.');
+  }
+  onMeldSubmitted(callback: (melds: Meld[]) => void): void {
+    throw new Error('Method not implemented.');
+  }
+  onMeldAppended(callback: (meld: Meld, cards: Card[]) => void): void {
+    throw new Error('Method not implemented.');
+  }
+  
   startGame(): void {
     const current = this.getCurrentPlayer();
     if (current) {
@@ -41,20 +64,28 @@ export class MultiplayerGameState implements GameState {
     }
   }
 
-  onOpponentDraw(callback: (player: Player) => void): void {
+  onRoundStart(callback: () => void): void {
+    this.onRoundStartCallbacks.push(callback);
+  }
+
+  onRoundEnd(callback: () => void): void {
+    this.onRoundEndCallbacks.push(callback);
+  }
+
+  onTurnAdvance(callback: (player: IPlayer) => void): void {
+    this.onTurnAdvanceCallbacks.push(callback);
+  }
+
+  onOpponentDraw(callback: (player: IPlayer) => void): void {
     this.onOpponentDrawCallbacks.push(callback);
   }
 
-  onOpponentDiscard(callback: (player: Player, card: Card) => void): void {
+  onOpponentDiscard(callback: (player: IPlayer, card: Card) => void): void {
     this.onOpponentDiscardCallbacks.push(callback);
   }
 
-  onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void {
+  onOpponentDrawFromDiscard(callback: (player: IPlayer, card: Card) => void): void {
     this.onOpponentDrawFromDiscardCallbacks.push(callback);
-  }
-
-  onTurnAdvance(callback: (player: Player) => void): void {
-    this.onTurnAdvanceCallbacks.push(callback);
   }
 
   onMayIRequest(callback: (request: MayIRequest) => void): void {
@@ -69,31 +100,44 @@ export class MultiplayerGameState implements GameState {
     this.onMayIResolvedCallbacks.push(callback);
   }
 
-  onMayINextVoter(callback: (request: MayIRequest, nextVoter: Player) => void): void {
+  onMayINextVoter(callback: (request: MayIRequest, nextVoter: IPlayer) => void): void {
     this.onMayINextVoterCallbacks.push(callback);
   }
 
-  private opponentDraw(player: Player) {
+  private roundStart() {
+    for (const cb of this.onRoundStartCallbacks) {
+      cb();
+    }
+  }
+
+  private roundEnd() {
+    for (const cb of this.onRoundEndCallbacks) {
+      cb();
+    }
+  }
+
+  private turnAdvance(player: IPlayer) {
+    for (const cb of this.onTurnAdvanceCallbacks) {
+      cb(player);
+    }
+  }
+
+
+  private opponentDraw(player: IPlayer) {
     for (const cb of this.onOpponentDrawCallbacks) {
       cb(player);
     }
   }
 
-  private opponentDrawFromDiscard(player: Player, card: Card) {
+  private opponentDrawFromDiscard(player: IPlayer, card: Card) {
     for (const cb of this.onOpponentDrawFromDiscardCallbacks) {
       cb(player, card);
     }
   }
 
-  private opponentDiscard(player: Player, card: Card) {
+  private opponentDiscard(player: IPlayer, card: Card) {
     for (const cb of this.onOpponentDiscardCallbacks) {
       cb(player, card);
-    }
-  }
-
-  private turnAdvance(player: Player) {
-    for (const cb of this.onTurnAdvanceCallbacks) {
-      cb(player);
     }
   }
 
@@ -123,7 +167,7 @@ export class MultiplayerGameState implements GameState {
       // Add card to requesting player's hand
       request.player.hand.push(request.card);
       
-      // Player must also draw a penalty card from draw pile
+      // IPlayer must also draw a penalty card from draw pile
       // TODO: Klennedy rule.
       if (this.drawPile.length > 0) {
         const penaltyCard = this.drawPile.pop()!;
@@ -141,7 +185,7 @@ export class MultiplayerGameState implements GameState {
     }
   }
   
-  isPlayerTurn(player?: Player): boolean {
+  isPlayerTurn(player?: IPlayer): boolean {
     if(!player) {
       const playerIndex = this.players.findIndex(p => p.isPlayer);
       return this.currentTurn === playerIndex;
@@ -150,7 +194,7 @@ export class MultiplayerGameState implements GameState {
     return this.currentTurn === playerIndex;
   }
 
-  getCurrentPlayer(): Player | undefined {
+  getCurrentPlayer(): IPlayer | undefined {
     return this.players[this.currentTurn];
   }
 
@@ -159,7 +203,7 @@ export class MultiplayerGameState implements GameState {
     return player ? player.hand : [];
   }
 
-  getOpponents(): Player[] {
+  getOpponents(): IPlayer[] {
     return this.players.filter(p => !p.isPlayer);
   }
   
@@ -170,6 +214,15 @@ export class MultiplayerGameState implements GameState {
     this.currentTurn = serverState.currentTurn;
     // Trigger scene update if needed
   }
+
+  submitMelds(melds: Meld[]): boolean {
+    throw new Error('Method not implemented.');
+  }
+  
+  addToMeld(meld: Meld, cards: Card[]): boolean {
+    throw new Error('Method not implemented.');
+  }
+
 
   drawCard(): Card | null {
     // In multiplayer, we request from server
@@ -186,11 +239,11 @@ export class MultiplayerGameState implements GameState {
     this.socket.emit('discardCard', card);
   }
   
-  async mayI(player: Player, card: Card): Promise<boolean> {
+  async mayI(player: IPlayer, card: Card): Promise<boolean> {
     throw new Error('Method not implemented.');
   }
   
-  respondToMayI(player: Player, request: MayIRequest, allow: boolean): void {
+  respondToMayI(player: IPlayer, request: MayIRequest, allow: boolean): void {
     throw new Error('Method not implemented.');
   }
 

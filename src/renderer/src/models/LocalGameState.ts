@@ -1,37 +1,45 @@
-import { Card, Player, GameState, MayIRequest, MayIResponse, roundConfigs, Rank } from './GameState'
+import { GameState, MayIRequest, MayIResponse } from './GameState'
+import { Card, roundConfigs, Rank } from './Types';
+import { IPlayer, Player, Meld, validateMeld } from './Player';
 import { v4 as uuidv4 } from 'uuid';
 
 export class LocalGameState implements GameState {
-  decks: number;
-  totalPlayers: number;
-  players: Player[] = [];
+  readonly decks: number;
+  readonly totalPlayers: number;
+  readonly players: IPlayer[] = [];
   drawPile: Card[] = [];
   discardPile: Card[] = [];
   currentTurn: number = 0;
   currentRound: number = 0;
   roundConfigs = roundConfigs;
+  roundMelds: Meld[] = [];
 
   mayIRequests: MayIRequest[] = [];
 
   cardOnTable: Card | null = null;
   drawnThisTurn: boolean = false;
   discardedThisTurn: boolean = false;
-  
-  private onOpponentDrawCallbacks: Array<(player: Player) => void> = [];
-  private onOpponentDiscardCallbacks: Array<(player: Player, card: Card) => void> = [];
-  private onOpponentDrawFromDiscardCallbacks: Array<(player: Player, card: Card) => void> = [];
-  private onTurnAdvanceCallbacks: Array<(player: Player) => void> = [];
+
+  private onGameStartCallbacks: Array<() => void> = [];
+  private onGameEndCallbacks: Array<() => void> = [];
+  private onRoundStartCallbacks: Array<() => void> = [];
+  private onRoundEndCallbacks: Array<() => void> = [];
+  private onTurnAdvanceCallbacks: Array<(player: IPlayer) => void> = [];
+  private onOpponentDrawCallbacks: Array<(player: IPlayer) => void> = [];
+  private onOpponentDiscardCallbacks: Array<(player: IPlayer, card: Card) => void> = [];
+  private onOpponentDrawFromDiscardCallbacks: Array<(player: IPlayer, card: Card) => void> = [];
   private onMayIRequestCallbacks: Array<(request: MayIRequest) => void> = [];
   private onMayIResponseCallbacks: Array<(request: MayIRequest, response: MayIResponse) => void> = [];
   private onMayIResolvedCallbacks: Array<(request: MayIRequest, accepted: boolean) => void> = [];
-  private onMayINextVoterCallbacks: Array<(request: MayIRequest, nextVoter: Player) => void> = [];
+  private onMayINextVoterCallbacks: Array<(request: MayIRequest, nextVoter: IPlayer) => void> = [];
+  private onMeldSubmittedCallbacks: Array<(melds: Meld[]) => void> = [];
+  private onMeldAppendedCallbacks: Array<(meld: Meld, cards: Card[]) => void> = [];
 
   constructor(decks: number = 3, totalPlayers: number = 5) {
     this.decks = decks;
     this.totalPlayers = totalPlayers;
     this.initializePlayers();
-    this.initializeDeck();
-    this.dealCards();
+    this.startRound();
   }
 
   startGame(): void {
@@ -41,22 +49,47 @@ export class LocalGameState implements GameState {
         cb(current);
       }
     }
+    for (const cb of this.onGameStartCallbacks) {
+      cb();
+    }
   }
 
-  onOpponentDraw(callback: (player: Player) => void): void {
+  endGame(): void {
+    for (const cb of this.onGameEndCallbacks) {
+      cb();
+    }
+  }
+
+  onGameStart(callback: () => void): void {
+    this.onGameStartCallbacks.push(callback);
+  }
+
+  onGameEnd(callback: () => void): void {
+    this.onGameEndCallbacks.push(callback);
+  }
+
+  onRoundStart(callback: () => void): void {
+    this.onRoundStartCallbacks.push(callback);
+  }
+
+  onRoundEnd(callback: () => void): void {
+    this.onRoundEndCallbacks.push(callback);
+  }
+
+  onTurnAdvance(callback: (player: IPlayer) => void): void {
+    this.onTurnAdvanceCallbacks.push(callback);
+  }
+
+  onOpponentDraw(callback: (player: IPlayer) => void): void {
     this.onOpponentDrawCallbacks.push(callback);
   }
 
-  onOpponentDiscard(callback: (player: Player, card: Card) => void): void {
+  onOpponentDiscard(callback: (player: IPlayer, card: Card) => void): void {
     this.onOpponentDiscardCallbacks.push(callback);
   }
 
-  onOpponentDrawFromDiscard(callback: (player: Player, card: Card) => void): void {
+  onOpponentDrawFromDiscard(callback: (player: IPlayer, card: Card) => void): void {
     this.onOpponentDrawFromDiscardCallbacks.push(callback);
-  }
-
-  onTurnAdvance(callback: (player: Player) => void): void {
-    this.onTurnAdvanceCallbacks.push(callback);
   }
 
   onMayIRequest(callback: (request: MayIRequest) => void): void {
@@ -71,32 +104,51 @@ export class LocalGameState implements GameState {
     this.onMayIResolvedCallbacks.push(callback);
   }
 
-  onMayINextVoter(callback: (request: MayIRequest, nextVoter: Player) => void): void {
+  onMayINextVoter(callback: (request: MayIRequest, nextVoter: IPlayer) => void): void {
     this.onMayINextVoterCallbacks.push(callback);
   }
 
+  onMeldSubmitted(callback: (melds: Meld[]) => void): void {
+    this.onMeldSubmittedCallbacks.push(callback);
+  }
 
-  private opponentDraw(player: Player) {
+  onMeldAppended(callback: (meld: Meld, cards: Card[]) => void): void {
+    this.onMeldAppendedCallbacks.push(callback);
+  }
+
+  private roundStart() {
+    for (const cb of this.onRoundStartCallbacks) {
+      cb();
+    }
+  }
+
+  private roundEnd() {
+    for (const cb of this.onRoundEndCallbacks) {
+      cb();
+    }
+  }
+
+  private turnAdvance(player: IPlayer) {
+    for (const cb of this.onTurnAdvanceCallbacks) {
+      cb(player);
+    }
+  }
+
+  private opponentDraw(player: IPlayer) {
     for (const cb of this.onOpponentDrawCallbacks) {
       cb(player);
     }
   }
 
-  private opponentDrawFromDiscard(player: Player, card: Card) {
+  private opponentDrawFromDiscard(player: IPlayer, card: Card) {
     for (const cb of this.onOpponentDrawFromDiscardCallbacks) {
       cb(player, card);
     }
   }
 
-  private opponentDiscard(player: Player, card: Card) {
+  private opponentDiscard(player: IPlayer, card: Card) {
     for (const cb of this.onOpponentDiscardCallbacks) {
       cb(player, card);
-    }
-  }
-
-  private turnAdvance(player: Player) {
-    for (const cb of this.onTurnAdvanceCallbacks) {
-      cb(player);
     }
   }
 
@@ -104,14 +156,6 @@ export class LocalGameState implements GameState {
     for (const cb of this.onMayIRequestCallbacks) {
       cb(request);
     }
-  }
-
-  private waitForMayIResolution(request: MayIRequest): Promise<boolean> {
-    request.promise = new Promise<boolean>(resolve => {
-      request.resolve = resolve;
-    });
-
-    return request.promise;
   }
 
   private mayIResponse(request: MayIRequest, response: MayIResponse) {
@@ -159,13 +203,13 @@ export class LocalGameState implements GameState {
     }
   }
   
-  private mayINextVoter(request: MayIRequest, nextVoter: Player) {
+  private mayINextVoter(request: MayIRequest, nextVoter: IPlayer) {
     for (const cb of this.onMayINextVoterCallbacks) {
       cb(request, nextVoter);
     }
   }
 
-  private getMayIVotersInOrder(requester: Player): Player[] {
+  private getMayIVotersInOrder(requester: IPlayer): IPlayer[] {
     const requesterIndex = this.players.findIndex(p => p.id === requester.id);
     if (requesterIndex === -1) return [];
 
@@ -175,7 +219,7 @@ export class LocalGameState implements GameState {
     }
 
     // Otherwise, only players from currentTurn up to (but not including) requester vote.
-    const voters: Player[] = [];
+    const voters: IPlayer[] = [];
     let i = this.currentTurn;
 
     while (i !== requesterIndex) {
@@ -185,8 +229,16 @@ export class LocalGameState implements GameState {
 
     return voters;
   }
+
+  private waitForMayIResolution(request: MayIRequest): Promise<boolean> {
+    request.promise = new Promise<boolean>(resolve => {
+      request.resolve = resolve;
+    });
+
+    return request.promise;
+  }
   
-  isPlayerTurn(player?: Player): boolean {
+  isPlayerTurn(player?: IPlayer): boolean {
     if(!player) {
       const playerIndex = this.players.findIndex(p => p.isPlayer);
       return this.currentTurn === playerIndex;
@@ -195,7 +247,7 @@ export class LocalGameState implements GameState {
     return this.currentTurn === playerIndex;
   }
 
-  getCurrentPlayer(): Player | undefined {
+  getCurrentPlayer(): IPlayer | undefined {
     return this.players[this.currentTurn];
   }
 
@@ -204,15 +256,15 @@ export class LocalGameState implements GameState {
     return player ? player.hand : [];
   }
 
-  getOpponents(): Player[] {
+  getOpponents(): IPlayer[] {
     return this.players.filter(p => !p.isPlayer);
   }
 
   private initializePlayers() {
-    this.players.push({ id: uuidv4(), name: 'human', hand: [], isPlayer: true, isHuman: true });
+    this.players.push(new Player('human', true, true));
 
     for (let i = 1; i < this.totalPlayers; i++) {
-      this.players.push({ id: uuidv4(), name: `ai${i}`, hand: [], isPlayer: false, isHuman: false });
+      this.players.push(new Player(`ai${i}`, false, false));
     }
   }
 
@@ -240,6 +292,29 @@ export class LocalGameState implements GameState {
     return deck;
   }
 
+  private endRound() {
+    // TODO: Tally everyone's scores, reset hands, redeal, etc.
+
+    this.roundEnd();
+    // TODO: Do we need to wait or anything before starting next round?
+
+    this.currentRound++;
+    this.startRound();
+  }
+
+  private startRound() {
+    this.drawPile = [];
+    this.discardPile = [];
+    this.currentTurn = this.currentRound % this.totalPlayers;
+    this.mayIRequests = [];
+    this.drawnThisTurn = false;
+    this.discardedThisTurn = false;
+    this.cardOnTable = null;
+    this.initializeDeck();
+    this.dealCards();
+    this.roundStart();
+  }
+
   private dealCards() {
     for (const player of this.players) {
       player.hand = this.drawPile.splice(0, 11);
@@ -248,11 +323,169 @@ export class LocalGameState implements GameState {
     this.discardPile.push(this.drawPile.pop()!);
   }
 
+  private checkForWin(honors: boolean = false): boolean {
+    const currentPlayer = this.getCurrentPlayer();
+    // If nothing left in player's hand, they go out and round ends (with honors)
+    if(currentPlayer!.hand.length === 0) {
+      console.log(`${currentPlayer!.name} has gone out! Ending round.`);
+      // TODO: What about honors?
+      this.endRound();
+      return true;
+    }
+    return false;
+  }
+
+  submitMelds(melds: Meld[]): boolean {
+    // Ensure it is the current player's turn and that they have drawn but not discarded.
+    const currentPlayer = this.getCurrentPlayer();
+    if(!currentPlayer) {
+      console.log("No current player.");
+      return false;
+    }
+
+    if(this.drawnThisTurn === false || this.discardedThisTurn === true) {
+      console.log("Cannot submit melds at this time.");
+      return false;
+    }
+
+    // Ensure the player hasn't already done down
+    if (this.roundMelds.some(m => m.owner.id === currentPlayer.id)) {
+      console.log("Player has already gone down this round.");
+      return false;
+    }
+    
+    // Validate melds according to current round config
+    const config = this.roundConfigs[this.currentRound];
+    const runs = melds.filter(m => m.type === 'run').length;
+    const sets = melds.filter(m => m.type === 'set').length;
+    if (config.runs !== runs) {
+      console.log(`Invalid number of runs for this round. Expected ${config.runs}, got ${runs}.`);
+      return false;
+    }
+    if (config.sets !== sets) {
+      console.log(`Invalid number of sets for this round. Expected ${config.sets}, got ${sets}.`);
+      return false;
+    }
+
+    // ensure no cards are reused across melds by ensuring all cards are unique
+    const usedCardGuids = new Set<string>();
+    for (const meld of melds) {
+      for (const mc of meld.cards) {
+        if (usedCardGuids.has(mc.card.guid)) {
+          console.log("Card used in multiple melds:", mc.card);
+          return false;
+        }
+        usedCardGuids.add(mc.card.guid);
+      }
+    }
+
+    melds.forEach(meld => {
+      if(meld.owner.id !== currentPlayer.id) {
+        console.log("Meld owner does not match current player.");
+        return false;
+      }
+      // Ensure all cards in meld belong to current player
+      for (const c of meld.cards) {
+        const cardIndex = currentPlayer.hand.findIndex(card => card.guid === c.card.guid);
+        if (cardIndex === -1) {
+          console.log("Player does not have card in hand for meld:", c.card);
+          return false;
+        }
+      }
+
+      // validate meld structure
+      if (!validateMeld(meld, true)) {
+        console.log("Invalid meld:", meld);
+        return false;
+      }
+    });
+
+    melds.forEach(meld => {
+      meld.cards.forEach(mc => {
+        const cardIndex = currentPlayer.hand.findIndex(card => card.guid === mc.card.guid);
+        if (cardIndex !== -1) {
+          currentPlayer.hand.splice(cardIndex, 1);
+        }
+      });
+      this.roundMelds.push(meld);
+    });
+    
+    // Fire event/callback for meld submission
+    for (const cb of this.onMeldSubmittedCallbacks) {
+      cb(melds);
+    }
+
+    this.checkForWin(true);
+
+    return true;
+  }
+
+  addToMeld(meld: Meld, cards: Card[]): boolean {
+    // Ensure it is the current player's turn and that they have drawn but not discarded.
+    const currentPlayer = this.getCurrentPlayer();
+    if(!currentPlayer) {
+      console.log("No current player.");
+      return false;
+    }
+
+    if(this.drawnThisTurn === false || this.discardedThisTurn === true) {
+      console.log("Cannot submit melds at this time.");
+      return false;
+    }
+    
+    // Ensure the cards being added to the meld belong to the player
+    if (meld.owner.id !== currentPlayer.id) {
+      console.log("Meld owner does not match current player.");
+      return false;
+    }
+
+    // Validate that the meld remains valid after adding the cards
+    const newMeld: Meld = {
+      id: meld.id,
+      type: meld.type,
+      owner: meld.owner,
+      cards: meld.cards.concat(cards.map(c => ({ player: currentPlayer, card: c })))
+    };
+    if (!validateMeld(newMeld, false)) {
+      console.log("Resulting meld would be invalid after adding cards.");
+      return false;
+    }
+    
+    // Remove cards from player's hand and add to meld
+    cards.forEach(c => {
+      const index = currentPlayer.hand.findIndex(card => card.guid === c.guid);
+      if (index !== -1) {
+        currentPlayer.hand.splice(index, 1);
+      }
+    });
+    meld.cards = newMeld.cards;
+    
+    // Fire event/callback for meld append
+    for (const cb of this.onMeldAppendedCallbacks) {
+      cb(meld, cards);
+    }
+
+    this.checkForWin(true);
+
+    return true;
+  }
+
+  getRoundMelds(): Meld[] {
+    return this.roundMelds;
+  }
+
+  isPlayerDown(player: IPlayer): boolean {
+    return this.roundMelds.some(m => m.owner.id === player.id);
+  }
+
   drawCard(): Card | null {
     if (this.drawPile.length === 0)
     {
       console.log('Draw pile is empty');
-      if(this.discardPile.length === 0) return null; // TODO: handle no cards left
+      if(this.discardPile.length === 0) {
+        this.endRound();
+        return null;
+      }
       this.drawPile = this.shuffleDeck(this.discardPile);
       this.discardPile = [];
       return this.drawCard();
@@ -327,9 +560,11 @@ export class LocalGameState implements GameState {
     if(!this.isPlayerTurn()) {
       this.opponentDiscard(this.getCurrentPlayer()!, card);
     }
+
+    this.checkForWin();
   }
 
-  async mayI(player: Player, card: Card): Promise<boolean> {
+  async mayI(player:IPlayer, card: Card): Promise<boolean> {
     if (card.guid !== this.discardPile[this.discardPile.length - 1].guid) {
       console.log("Can only May I the top card of the discard pile.");
       return false;
@@ -362,7 +597,7 @@ export class LocalGameState implements GameState {
     return await this.waitForMayIResolution(request);
   }
 
-  respondToMayI(player: Player, request: MayIRequest, allow: boolean): void {
+  respondToMayI(player: IPlayer, request: MayIRequest, allow: boolean): void {
     const req = this.mayIRequests.find(r => r.id === request.id);
 
     if (!req) {
@@ -416,7 +651,7 @@ export class LocalGameState implements GameState {
     }
   }
 
-  private resolveMayI(req: MayIRequest, winner: Player, deniedBy: Player | null) {
+  private resolveMayI(req: MayIRequest, winner: IPlayer, deniedBy: IPlayer | null) {
     req.resolved = true;
     req.winner = winner;
     req.deniedBy = deniedBy;
