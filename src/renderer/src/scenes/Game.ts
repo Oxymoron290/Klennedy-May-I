@@ -37,6 +37,8 @@ export default class GameScene extends Phaser.Scene {
   private opponentHandContainers: Phaser.GameObjects.Container[] = [];
   private opponentNameTexts: Phaser.GameObjects.Text[] = [];
   private pendingCardSprite: Phaser.GameObjects.Sprite | null = null;
+  private topDiscardCardSprite: Phaser.GameObjects.Sprite | null = null;
+  private mayIAnimating = false;
 
   constructor() {
     super({ key: 'GameScene' })
@@ -513,6 +515,7 @@ export default class GameScene extends Phaser.Scene {
 
   private renderDiscardPile(discardPile: Card[]) {
     this.discardContainer.removeAll(true);
+    this.topDiscardCardSprite = null;
     discardPile.forEach((card, index) => {
       const frameName = this.getFrameName(card);
       const offsetX = index * 0.3;
@@ -548,6 +551,11 @@ export default class GameScene extends Phaser.Scene {
             this.addPendingCardSprite(drawn, true)
           }
         });
+      }
+
+      // assign topDiscardCardSprite to the last card sprite for animation reference
+      if (index === discardPile.length - 1) {
+        this.topDiscardCardSprite = sprite;
       }
 
       this.discardContainer.add(sprite);
@@ -910,6 +918,7 @@ export default class GameScene extends Phaser.Scene {
       winner: null,
       deniedBy: null,
       penaltyCard: null,//{ suit: 'hearts', rank: 7, guid: 'card-guid-123' }//null,
+      turnPlayer: this.gameState!.players[0],
     }
 
     let pendingVote = false;
@@ -938,13 +947,18 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private renderMayIOverlay() {
+    if (this.mayIAnimating) return;
     const unresolvedRequests = this.gameState?.mayIRequests.filter(req => !this.resolvedMayIRequests.includes(req)) || [];
     const activeRequest = unresolvedRequests.at(-1) || null;
     // const activeRequest = this.mockMayIRequest();
     
+    this.topDiscardCardSprite?.postFX?.clear();
     this.mayIContainer.removeAll(true);
     this.mayIContainer.setVisible(activeRequest !== null);
     if (!activeRequest) return;
+
+    // TODO: ensure topDiscardCardSprite matches activeRequest
+    this.topDiscardCardSprite?.postFX?.addGlow(0xff0000, 4, 0, false);
 
     const bg = this.add.graphics();
 
@@ -999,47 +1013,104 @@ export default class GameScene extends Phaser.Scene {
       
       const localX = worldTarget.x - this.mayIContainer.x;
       const localY = worldTarget.y - this.mayIContainer.y;
+
+      const discardSprite = this.topDiscardCardSprite ?? null;
       
-      const timeline = this.add.timeline([
-        {
+      if (discardSprite) {
+        const world = this.getWorldPosition(discardSprite);
+        const local = this.worldToLocal(this.mayIContainer, world);
+
+        this.discardContainer.remove(discardSprite);
+        this.mayIContainer?.add(discardSprite);
+
+        discardSprite.setPosition(local.x, local.y);
+      }
+
+      const steps: Phaser.Types.Time.TimelineEventConfig[] = [];
+
+      // Always present
+      steps.push({
+        at: 0,
+        tween: {
+          targets: cardSprite,
+          x: 40,
+          y: 20,
+          duration: 400,
+          ease: "Back.easeOut"
+        }
+      });
+
+      steps.push({
+        at: 0,
+        tween: {
+          targets: penaltySprite,
+          x: -40,
+          y: 20,
+          duration: 400,
+          ease: "Back.easeOut"
+        }
+      });
+
+      // Only add this block if topDiscardCardSprite exists
+      if (discardSprite) {
+        steps.push({
           at: 0,
           tween: {
-            targets: cardSprite,
+            targets: discardSprite,
             x: 40,
             y: 20,
+            rotation: 0,
             duration: 400,
-            ease: 'Back.easeOut'
+            scale: 0.5,
+            ease: "Back.easeOut"
           }
-        },
-        {
-          at: 0,
-          tween: {
-            targets: penaltySprite,
-            x: -40,
-            y: 20,
-            duration: 400,
-            ease: 'Back.easeOut',
-          }
-        },
-        {
-          at: 1400, // 400ms animation + 6000ms wait
-          tween: {
-            targets: [cardSprite, penaltySprite],
-            x: localX,
-            y: localY,
-            scale: 0.3,
-            duration: 400,
-            ease: 'Power2.easeIn',
-            onComplete: () => {
-              this.mayIContainer.removeAll(true);
-              this.mayIContainer.setVisible(false);
-            }
-          }
-        }
-      ]);
+        });
+      }
 
+      // Build final target list for the fly-to-hand animation
+      const finalTargets = [cardSprite, penaltySprite];
+
+      if (discardSprite) {
+        finalTargets.push(discardSprite);
+      }
+
+      steps.push({
+        at: 1400,
+        tween: {
+          targets: finalTargets,
+          x: localX,
+          y: localY,
+          scale: 0.3,
+          duration: 400,
+          ease: "Power2.easeIn"
+        }
+      });
+
+      steps.push({
+        at: 1900,
+        run: () => {
+          // Nothing needed here for now
+        }
+      });
+
+      const timeline = this.add.timeline(steps);
+
+      this.mayIAnimating = true;
+      timeline.once('complete', async () => {
+        //await new Promise(async res => setTimeout(res, 600));
+        this.mayIAnimating = false;
+        this.mayIContainer.removeAll(true);
+        this.mayIContainer.setVisible(false);
+
+        if (discardSprite) {
+          discardSprite.postFX?.clear();
+          discardSprite.destroy();
+        }
+
+        this.resolvedMayIRequests.push(activeRequest);
+        this.updateFromGameState();
+      });
       timeline.play();
-      this.resolvedMayIRequests.push(activeRequest);
     } else {
       this.renderActiveVote(activeRequest);
     }
@@ -1131,18 +1202,47 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private getPlayerHandWorldPosition(player: IPlayer): { x: number; y: number } | null {
-  if (player.isPlayer) {
-    return { x: this.handContainer.x, y: this.handContainer.y };
+    if (player.isPlayer) {
+      return { x: this.handContainer.x, y: this.handContainer.y };
+    }
+
+    const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
+    const opponentIndex = opponents.findIndex(p => p.id === player.id);
+
+    if (opponentIndex === -1) return null;
+
+    const container = this.opponentHandContainers[opponentIndex];
+    if (!container) return null;
+
+    return { x: container.x, y: container.y };
   }
 
-  const opponents = this.gameState?.players.filter(p => !p.isPlayer) ?? [];
-  const opponentIndex = opponents.findIndex(p => p.id === player.id);
+  private getWorldPosition(
+    go: Phaser.GameObjects.GameObject & { x: number; y: number; parentContainer?: Phaser.GameObjects.Container }
+  ) {
+    const out = new Phaser.Math.Vector2();
 
-  if (opponentIndex === -1) return null;
+    if (go.parentContainer) {
+      go.parentContainer.getWorldTransformMatrix().transformPoint(go.x, go.y, out);
+    } else {
+      out.set(go.x, go.y);
+    }
 
-  const container = this.opponentHandContainers[opponentIndex];
-  if (!container) return null;
+    return out;
+  }
 
-  return { x: container.x, y: container.y };
-}
+  private worldToLocal(container: Phaser.GameObjects.Container, world: Phaser.Math.Vector2) {
+    // Copy the world transform into a new matrix
+    const m = new Phaser.GameObjects.Components.TransformMatrix();
+    container.getWorldTransformMatrix(m);
+
+    // Invert it safely
+    m.invert();
+
+    const out = new Phaser.Math.Vector2();
+    m.transformPoint(world.x, world.y, out);
+
+    return out;
+  }
+
 }

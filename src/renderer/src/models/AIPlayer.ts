@@ -215,7 +215,10 @@ export abstract class AIPlayer {
   }
 
   protected delay(ms: number) {
-    return new Promise(res => setTimeout(res, ms));
+    return new Promise(async res => {
+      setTimeout(res, ms)
+      await this.game.waitForNoPendingMayI();
+    });
   }
 }
 
@@ -477,6 +480,7 @@ export class HardBot extends AIPlayer {
     // Decide draw source
     const topDiscard = this.game.discardPile[this.game.discardPile.length - 1];
     if (topDiscard && this.isCardUseful(topDiscard)) {
+      console.log("> HardBot drawing from discard pile", topDiscard);
       this.game.drawDiscard();
     } else {
       this.game.drawCard();

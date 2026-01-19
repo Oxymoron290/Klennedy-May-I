@@ -16,6 +16,8 @@ export interface MayIRequest {
   winner: IPlayer | null;       // who ended up taking the card
   deniedBy: IPlayer | null;     // if someone denied, who
   penaltyCard: Card | null;    // the penalty card for the winner (hidden by UI for others)
+
+  turnPlayer: IPlayer;      // who was the turn player when this was requested
 }
 
 export interface MayIResponse {

@@ -527,14 +527,18 @@ export class LocalGameState implements GameState {
       console.log('Already drawn this turn');
       return null;
     }
+
+    let card: Card;
     // If there is a pending may I request, drawing from discard rejects the request
     const pendingMayI = this.mayIRequests.find(r => r.resolved === false);
     if (pendingMayI) {
       console.log('Drawing from discard pile rejects pending May I request');
-      this.resolveMayI(pendingMayI, pendingMayI.player, null);
+      this.buildMayIResponse(pendingMayI, this.getCurrentPlayer()!, false);
+      card = pendingMayI.card;
+    } else {
+      card = this.discardPile.pop()!;
     }
-
-    const card = this.discardPile.pop()!;
+    
     this.cardOnTable = card;
     this.drawnThisTurn = true;
     if(!this.isPlayerTurn()) {
@@ -622,7 +626,8 @@ export class LocalGameState implements GameState {
       nextVoterIndex: 0,
       winner: null,
       deniedBy: null,
-      penaltyCard: null
+      penaltyCard: null,
+      turnPlayer: this.getCurrentPlayer()!
     };
 
     // IMPORTANT: create the promise BEFORE any chance of resolving
@@ -673,7 +678,10 @@ export class LocalGameState implements GameState {
       console.log(`Out of order May I response. Expected ${expected?.name}, got ${player.name}.`);
       return;
     }
+    this.buildMayIResponse(req, player, allow);
+  }
 
+  private buildMayIResponse(req: MayIRequest, player: IPlayer, allow: boolean): void {
     const response: MayIResponse = {
       player,
       accepted: allow
@@ -697,7 +705,7 @@ export class LocalGameState implements GameState {
   }
 
   private resolveMayI(req: MayIRequest) {
-    const requesterWon = req.winner?.id === req.player.id;
+    const requesterWon = req.winner!.id === req.player.id;
 
     // Remove the requested card from discard pile (someone is taking it)
     const cardIndex = this.discardPile.findIndex(c => c.guid === req.card.guid);
@@ -708,15 +716,36 @@ export class LocalGameState implements GameState {
     // Winner takes requested card
     req.winner!.hand.push(req.card);
 
-    // Winner takes penalty card
-    if (this.drawPile.length > 0) {
-      const penaltyCard = this.drawPile.pop()!;
-      req.winner!.hand.push(penaltyCard);
-      if(req.winner!.id === this.getCurrentPlayer()!.id) {
-        // TODO: need to muck the penalty card from other players
-        req.penaltyCard = penaltyCard;
+    // Winner takes penalty card unless the winner is the current player
+    if(req.winner!.id !== req.turnPlayer.id) {
+      if (this.drawPile.length > 0) {
+        const penaltyCard = this.drawPile.pop()!;
+        req.winner!.hand.push(penaltyCard);
+        if(req.winner!.id === this.getCurrentPlayer()!.id) {
+          // need to muck the penalty card from other players
+          if(this.players.find(p => p.isPlayer)!.id === req.winner!.id) {
+            req.penaltyCard = penaltyCard;
+          }
+        }
       }
     }
+
+    // if any other requests are for that card, they are automatically denied
+    this.mayIRequests.forEach(r => {
+      if (r.id !== req.id && r.card.guid === req.card.guid && !r.resolved) {
+        r.responses.push({
+          player: r.player,
+          accepted: false
+        });
+        r.deniedBy = req.winner;
+        r.winner = req.winner;
+        r.resolved = true;
+        
+        for (const cb of this.onMayIResolvedCallbacks) {
+          cb(r, r.winner!.id === r.player.id);
+        }
+      }
+    });
 
     if (req.resolve) {
       // your original meaning of "accepted" was requester success
