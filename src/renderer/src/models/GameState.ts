@@ -42,6 +42,15 @@ export interface GameState {
   drawnThisTurn: boolean;
   discardedThisTurn: boolean;
 
+  // State Queries
+  getCurrentPlayer(): IPlayer | undefined;
+  getCurrentPlayerHand(): Card[];
+  isPlayerTurn(player?: IPlayer): boolean;
+  getRoundMelds(): Meld[];
+  isPlayerDown(player: IPlayer): boolean;
+  getOpponents(): IPlayer[];
+
+  // Player Controls
   startGame(): void;
   drawCard(): Card | null;
   drawDiscard(): Card | null;
@@ -49,15 +58,14 @@ export interface GameState {
   mayI(player: IPlayer, card: Card): Promise<boolean>;
   respondToMayI(player: IPlayer, request: MayIRequest, allow: boolean): void
   waitForNoPendingMayI(): Promise<void>;
-  getCurrentPlayer(): IPlayer | undefined;
-  getCurrentPlayerHand(): Card[];
-  isPlayerTurn(player?: IPlayer): boolean;
-  getOpponents(): IPlayer[];
   submitMelds(melds: Meld[]): boolean;
   addToMeld(meld: Meld, cards: Card[]): boolean;
-  getRoundMelds(): Meld[];
-  isPlayerDown(player: IPlayer): boolean;
+  discardCardOnTable(): void;
+  takeCardOnTable(index?: number): void;
+  endTurn(): void;
   
+
+  // Game Events
   onGameStart(callback: () => void): void;
   onGameEnd(callback: () => void): void;
   onRoundStart(callback: () => void): void;
@@ -73,8 +81,4 @@ export interface GameState {
   onMeldSubmitted(callback: (melds: Meld[]) => void): void;
   onMeldAppended(callback: (meld: Meld, cards: Card[]) => void): void;
 
-  discardCardOnTable(): void;
-  playerTakesCardOnTable(index?: number): void;
-
-  endTurn(): void;
 }

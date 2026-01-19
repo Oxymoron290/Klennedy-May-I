@@ -9,11 +9,17 @@ export class MultiplayerGameState implements GameState {
   drawPile: Card[] = [];
   discardPile: Card[] = [];
   currentTurn: number = 0;
-  
+  currentRound: number = 0;
+  turnCount: number = 0;
+  roundMelds: Meld[] = [];
+  mayIRequests: MayIRequest[] = [];
+
+  discardedThisTurn: boolean = false;
   cardOnTable: Card | null = null;
   drawnThisTurn: boolean = false;
   
-
+  private onGameStartCallbacks: Array<() => void> = [];
+  private onGameEndCallbacks: Array<() => void> = [];
   private onRoundStartCallbacks: Array<() => void> = [];
   private onRoundEndCallbacks: Array<() => void> = [];
   private onTurnAdvanceCallbacks: Array<(player: IPlayer) => void> = [];
@@ -24,6 +30,8 @@ export class MultiplayerGameState implements GameState {
   private onMayIResponseCallbacks: Array<(request: MayIRequest, response: MayIResponse) => void> = [];
   private onMayIResolvedCallbacks: Array<(request: MayIRequest, accepted: boolean) => void> = [];
   private onMayINextVoterCallbacks: Array<(request: MayIRequest, nextVoter: IPlayer) => void> = [];
+  private onMeldSubmittedCallbacks: Array<(melds: Meld[]) => void> = [];
+  private onMeldAppendedCallbacks: Array<(meld: Meld, cards: Card[]) => void> = [];
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -36,22 +44,11 @@ export class MultiplayerGameState implements GameState {
     // Optional: request initial state
     this.socket.emit('requestGameState');
   }
+
   getRoundMelds(): Meld[] {
     throw new Error('Method not implemented.');
   }
   isPlayerDown(player: IPlayer): boolean {
-    throw new Error('Method not implemented.');
-  }
-  onGameStart(callback: () => void): void {
-    throw new Error('Method not implemented.');
-  }
-  onGameEnd(callback: () => void): void {
-    throw new Error('Method not implemented.');
-  }
-  onMeldSubmitted(callback: (melds: Meld[]) => void): void {
-    throw new Error('Method not implemented.');
-  }
-  onMeldAppended(callback: (meld: Meld, cards: Card[]) => void): void {
     throw new Error('Method not implemented.');
   }
   
@@ -62,6 +59,14 @@ export class MultiplayerGameState implements GameState {
         cb(current);
       }
     }
+  }
+
+  onGameStart(callback: () => void): void {
+    this.onGameStartCallbacks.push(callback);
+  }
+
+  onGameEnd(callback: () => void): void {
+    this.onGameEndCallbacks.push(callback);
   }
 
   onRoundStart(callback: () => void): void {
@@ -102,6 +107,26 @@ export class MultiplayerGameState implements GameState {
 
   onMayINextVoter(callback: (request: MayIRequest, nextVoter: IPlayer) => void): void {
     this.onMayINextVoterCallbacks.push(callback);
+  }
+
+  onMeldSubmitted(callback: (melds: Meld[]) => void): void {
+    this.onMeldSubmittedCallbacks.push(callback);
+  }
+
+  onMeldAppended(callback: (meld: Meld, cards: Card[]) => void): void {
+    this.onMeldAppendedCallbacks.push(callback);
+  }
+
+  private gameStart() {
+    for (const cb of this.onRoundStartCallbacks) {
+      cb();
+    }
+  }
+
+  private gameEnd() { 
+    for (const cb of this.onRoundEndCallbacks) {
+      cb();
+    }
   }
 
   private roundStart() {
@@ -255,7 +280,7 @@ export class MultiplayerGameState implements GameState {
     // Notify server to discard the card on table
   }
 
-  playerTakesCardOnTable(index?: number): void {
+  takeCardOnTable(index?: number): void {
     // Notify server that player takes the card on table
   }
 

@@ -42,20 +42,6 @@ export class LocalGameState implements GameState {
     this.initializePlayers();
   }
 
-  startGame(): void {
-    for (const cb of this.onGameStartCallbacks) {
-      cb();
-    }
-
-    this.startRound();
-  }
-
-  endGame(): void {
-    for (const cb of this.onGameEndCallbacks) {
-      cb();
-    }
-  }
-
   onGameStart(callback: () => void): void {
     this.onGameStartCallbacks.push(callback);
   }
@@ -110,6 +96,20 @@ export class LocalGameState implements GameState {
 
   onMeldAppended(callback: (meld: Meld, cards: Card[]) => void): void {
     this.onMeldAppendedCallbacks.push(callback);
+  }
+
+  startGame(): void {
+    for (const cb of this.onGameStartCallbacks) {
+      cb();
+    }
+
+    this.startRound();
+  }
+
+  endGame(): void {
+    for (const cb of this.onGameEndCallbacks) {
+      cb();
+    }
   }
 
   private roundStart() {
@@ -188,11 +188,7 @@ export class LocalGameState implements GameState {
       request.resolve(accepted);
     }
 
-    // Remove the request from active requests
-    const requestIndex = this.mayIRequests.indexOf(request);
-    if (requestIndex !== -1) {
-      this.mayIRequests.splice(requestIndex, 1);
-    }
+    request.resolved = true;
 
     for (const cb of this.onMayIResolvedCallbacks) {
       cb(request, accepted);
@@ -258,6 +254,14 @@ export class LocalGameState implements GameState {
     return this.players.filter(p => !p.isPlayer);
   }
 
+  getRoundMelds(): Meld[] {
+    return this.roundMelds;
+  }
+
+  isPlayerDown(player: IPlayer): boolean {
+    return this.roundMelds.some(m => m.owner.id === player.id);
+  }
+
   private initializePlayers() {
     this.players.push(new Player('human', true, true));
 
@@ -290,19 +294,12 @@ export class LocalGameState implements GameState {
     return deck;
   }
 
-  private endRound() {
-    // Tally everyone's scores, reset hands, redeal, etc.
-    this.players.forEach(player => {
-      player.scores[this.currentRound] = player.getHandSummary().grandTotal;
-      player.hand = [];
-    });
+  private dealCards() {
+    for (const player of this.players) {
+      player.hand = this.drawPile.splice(0, 11);
+    }
 
-    // Invoke round end callbacks
-    this.roundEnd();
-    // TODO: Do we need to wait or anything before starting next round?
-
-    this.currentRound++;
-    this.startRound();
+    this.discardPile.push(this.drawPile.pop()!);
   }
 
   private startRound() {
@@ -321,12 +318,19 @@ export class LocalGameState implements GameState {
     this.turnAdvance(this.getCurrentPlayer()!);
   }
 
-  private dealCards() {
-    for (const player of this.players) {
-      player.hand = this.drawPile.splice(0, 11);
-    }
+  private endRound() {
+    // Tally everyone's scores, reset hands, redeal, etc.
+    this.players.forEach(player => {
+      player.scores[this.currentRound] = player.getHandSummary().grandTotal;
+      player.hand = [];
+    });
 
-    this.discardPile.push(this.drawPile.pop()!);
+    // Invoke round end callbacks
+    this.roundEnd();
+    // TODO: Do we need to wait or anything before starting next round?
+
+    this.currentRound++;
+    this.startRound();
   }
 
   private checkForWin(honors: boolean = false): boolean {
@@ -340,6 +344,8 @@ export class LocalGameState implements GameState {
     }
     return false;
   }
+
+  // ============= Player Controls =================
 
   submitMelds(melds: Meld[]): boolean {
     // Ensure it is the current player's turn and that they have drawn but not discarded.
@@ -487,14 +493,6 @@ export class LocalGameState implements GameState {
     return true;
   }
 
-  getRoundMelds(): Meld[] {
-    return this.roundMelds;
-  }
-
-  isPlayerDown(player: IPlayer): boolean {
-    return this.roundMelds.some(m => m.owner.id === player.id);
-  }
-
   drawCard(): Card | null {
     if (this.drawPile.length === 0)
     {
@@ -529,6 +527,13 @@ export class LocalGameState implements GameState {
       console.log('Already drawn this turn');
       return null;
     }
+    // If there is a pending may I request, drawing from discard rejects the request
+    const pendingMayI = this.mayIRequests.find(r => r.resolved === false);
+    if (pendingMayI) {
+      console.log('Drawing from discard pile rejects pending May I request');
+      this.resolveMayI(pendingMayI, pendingMayI.player, null);
+    }
+
     const card = this.discardPile.pop()!;
     this.cardOnTable = card;
     this.drawnThisTurn = true;
@@ -547,6 +552,14 @@ export class LocalGameState implements GameState {
       console.log('Already discarded this turn');
       return;
     }
+
+    // if pending may I request ... implement klennedy rules here
+    const pendingMayI = this.mayIRequests.find(r => r.resolved === false);
+    if (pendingMayI) {
+      console.log('Cannot discard while there is a pending May I request');
+      return;
+    }
+
     // ensure the card is not in any player's hand
     this.players.forEach(p => {
       const index = p.hand.findIndex(c => c.guid === card.guid);
@@ -590,6 +603,11 @@ export class LocalGameState implements GameState {
       return false;
     }
 
+    if (this.isPlayerTurn(player)) {
+      console.log("Player cannot request May I on their own turn.");
+      return false;
+    }
+
     const voters = this.getMayIVotersInOrder(player);
 
     console.log("May I voters in order:", voters.map(v => v.name));
@@ -615,7 +633,9 @@ export class LocalGameState implements GameState {
 
     // If nobody can vote, requester automatically wins
     if (request.voters.length === 0) {
-      this.resolveMayI(request, request.player, null);
+      request.resolved = true;
+      request.winner = request.player;
+      this.resolveMayI(request);
       return await promise;
     }
 
@@ -662,27 +682,22 @@ export class LocalGameState implements GameState {
     req.responses.push(response);
     this.mayIResponse(req, response);
 
-    if (!allow) {
-      this.resolveMayI(req, player, player);
-      return;
-    }
+    let pendingVote = req.voters.length !== req.responses.length;
+    req.deniedBy = req.responses?.find(r => r.accepted === false)?.player || null;
+    req.resolved = !pendingVote || req.responses!.some(r => r.accepted === false);
+    req.winner = (req.deniedBy != null) ? req.deniedBy : req.resolved && req.responses!.every(r => r.accepted === true) ? req.player : null;
 
-    req.nextVoterIndex++;
-
-    if (req.nextVoterIndex < req.voters.length) {
+    if (!req.resolved) {
+      req.nextVoterIndex++;
       const next = req.voters[req.nextVoterIndex];
       this.mayINextVoter(req, next);
     } else {
-      this.resolveMayI(req, req.player, null);
+      this.resolveMayI(req);
     }
   }
 
-  private resolveMayI(req: MayIRequest, winner: IPlayer, deniedBy: IPlayer | null) {
-    req.resolved = true;
-    req.winner = winner;
-    req.deniedBy = deniedBy;
-
-    const requesterWon = winner.id === req.player.id;
+  private resolveMayI(req: MayIRequest) {
+    const requesterWon = req.winner?.id === req.player.id;
 
     // Remove the requested card from discard pile (someone is taking it)
     const cardIndex = this.discardPile.findIndex(c => c.guid === req.card.guid);
@@ -691,13 +706,16 @@ export class LocalGameState implements GameState {
     }
 
     // Winner takes requested card
-    winner.hand.push(req.card);
+    req.winner!.hand.push(req.card);
 
     // Winner takes penalty card
     if (this.drawPile.length > 0) {
       const penaltyCard = this.drawPile.pop()!;
-      winner.hand.push(penaltyCard);
-      req.penaltyCard = penaltyCard;
+      req.winner!.hand.push(penaltyCard);
+      if(req.winner!.id === this.getCurrentPlayer()!.id) {
+        // TODO: need to muck the penalty card from other players
+        req.penaltyCard = penaltyCard;
+      }
     }
 
     if (req.resolve) {
@@ -705,9 +723,7 @@ export class LocalGameState implements GameState {
       req.resolve(requesterWon);
     }
 
-    // Remove from active list
-    const idx = this.mayIRequests.findIndex(r => r.id === req.id);
-    if (idx !== -1) this.mayIRequests.splice(idx, 1);
+    req.resolved = true;
 
     // Fire callback: accepted = requesterWon
     for (const cb of this.onMayIResolvedCallbacks) {
@@ -727,7 +743,7 @@ export class LocalGameState implements GameState {
     this.discard(this.cardOnTable!);
   }
 
-  playerTakesCardOnTable(index?: number): void {
+  takeCardOnTable(index?: number): void {
     if (this.cardOnTable) {
       if (index !== undefined) {
         this.getCurrentPlayerHand().splice(index, 0, this.cardOnTable);

@@ -4,6 +4,7 @@ import { LocalGameState } from "./LocalGameState";
 import { Card, InitialRunCount, InitialSetCount, Rank } from './Types';
 
 export abstract class AIPlayer {
+  thinkDelayMs = 1000;
   constructor(
     protected readonly game: LocalGameState,
     protected readonly player: IPlayer,
@@ -20,11 +21,12 @@ export abstract class AIPlayer {
       }
     });
 
-    this.game.onOpponentDiscard((p, card) => {
-      this.considerRequestingMayI();
+    this.game.onOpponentDiscard(() => {
+      // this.considerRequestingMayI();
+      // TODO: if it is about to be their turn there is no need to consider.
     });
 
-    this.game.onOpponentDrawFromDiscard((p, card) => {
+    this.game.onOpponentDrawFromDiscard(() => {
       this.considerRequestingMayI();
     });
 
@@ -220,7 +222,7 @@ export abstract class AIPlayer {
 export class EasyBot extends AIPlayer {
   name = "Easy";
   mayIDenyChance = 0.05;
-  thinkDelayMs = 50;//1000,
+  thinkDelayMs = 750;
   drawFromDiscardChance = 0.3;
   requestMayIChance = 0.01;
 
@@ -230,7 +232,7 @@ export class EasyBot extends AIPlayer {
   }
 
   async takeTurn() {
-    await super.delay(300);
+    await this.delay(this.thinkDelayMs);
     await this.game.waitForNoPendingMayI();
     // TODO: implement klennedy rules
 
@@ -246,7 +248,7 @@ export class EasyBot extends AIPlayer {
     await this.delay(this.thinkDelayMs);
     await this.game.waitForNoPendingMayI();
     const index = Math.floor(Math.random() * (this.player.hand.length + 1));
-    this.game.playerTakesCardOnTable(index);
+    this.game.takeCardOnTable(index);
 
     await this.delay(this.thinkDelayMs);
     await this.game.waitForNoPendingMayI();
@@ -325,6 +327,7 @@ export class EasyBot extends AIPlayer {
 }
 
 export class BirdBot extends AIPlayer {
+  thinkDelayMs: number = 500;
   name = "Bird-Bot";
 
   constructor(game: LocalGameState, player: IPlayer) {
@@ -333,16 +336,15 @@ export class BirdBot extends AIPlayer {
   }
 
   async takeTurn(): Promise<void> {
-    await this.delay(400);
+    await this.delay(this.thinkDelayMs);
 
     // Step 1: try to go down if possible
     await this.buildMelds();
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     // Step 2: try to add to existing melds
     await this.addToMelds();
-    await this.delay(300);
-
+    await this.delay(this.thinkDelayMs);
     // Step 3: choose draw source
     const topDiscard = this.game.discardPile[this.game.discardPile.length - 1];
 
@@ -352,7 +354,7 @@ export class BirdBot extends AIPlayer {
       this.game.drawCard();
     }
 
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     // Step 4: discard weakest card
     const discard = this.chooseDiscard();
@@ -360,7 +362,7 @@ export class BirdBot extends AIPlayer {
       this.game.discard(discard);
     }
 
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     await this.game.endTurn();
   }
@@ -370,13 +372,13 @@ export class BirdBot extends AIPlayer {
     if (!top) return;
 
     if (this.shouldTakeDiscard(top)) {
-      await this.delay(200);
+      await this.delay(this.thinkDelayMs);
       await this.game.mayI(this.player, top);
     }
   }
 
   async considerMayIRequest(request: MayIRequest): Promise<void> {
-    await this.delay(200);
+    await this.delay(this.thinkDelayMs);
 
     // deny if this card is useful to us
     if (this.shouldTakeDiscard(request.card)) {
@@ -458,18 +460,19 @@ export class HardBot extends AIPlayer {
   }
 
   async takeTurn(): Promise<void> {
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     // If card on table exists, take it if useful
     if (this.game.cardOnTable) {
       const useful = this.isCardUseful(this.game.cardOnTable);
       if (useful) {
-        this.game.playerTakesCardOnTable();
+        this.game.takeCardOnTable();
       } else {
         this.game.discardCardOnTable();
       }
       return;
     }
+    await this.delay(this.thinkDelayMs);
 
     // Decide draw source
     const topDiscard = this.game.discardPile[this.game.discardPile.length - 1];
@@ -479,7 +482,7 @@ export class HardBot extends AIPlayer {
       this.game.drawCard();
     }
 
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     // Try to go down
     await this.buildMelds();
@@ -487,7 +490,7 @@ export class HardBot extends AIPlayer {
     // Try to append to existing melds
     await this.addToMelds();
 
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     // Discard worst card
     const discard = this.chooseDiscard();
@@ -495,7 +498,7 @@ export class HardBot extends AIPlayer {
       this.game.discard(discard);
     }
 
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     await this.game.endTurn();
   }
@@ -512,7 +515,7 @@ export class HardBot extends AIPlayer {
   }
 
   async considerMayIRequest(request: MayIRequest): Promise<void> {
-    await this.delay(200);
+    await this.delay(this.thinkDelayMs);
 
     const helpsRequester = this.cardImprovesPlayer(request.card, request.player);
     const hurtsMe = this.isCardUseful(request.card);
@@ -622,13 +625,13 @@ export class ExpertBot extends AIPlayer {
   }
 
   async takeTurn(): Promise<void> {
-    await this.delay(250);
+    await this.delay(this.thinkDelayMs);
 
     // Handle card on table first
     if (this.game.cardOnTable) {
       const value = this.evaluateCard(this.game.cardOnTable);
       if (value > 4) {
-        this.game.playerTakesCardOnTable();
+        this.game.takeCardOnTable();
       } else {
         this.game.discardCardOnTable();
       }
@@ -644,13 +647,13 @@ export class ExpertBot extends AIPlayer {
       this.game.drawCard();
     }
 
-    await this.delay(250);
+    await this.delay(this.thinkDelayMs);
 
     // Meld logic
     await this.buildMelds();
     await this.addToMelds();
 
-    await this.delay(250);
+    await this.delay(this.thinkDelayMs);
 
     // Discard worst card
     const discard = this.chooseDiscard();
@@ -658,7 +661,7 @@ export class ExpertBot extends AIPlayer {
       this.game.discard(discard);
     }
 
-    await this.delay(250);
+    await this.delay(this.thinkDelayMs);
     await this.game.endTurn();
   }
 
@@ -675,7 +678,7 @@ export class ExpertBot extends AIPlayer {
   }
 
   async considerMayIRequest(request: MayIRequest): Promise<void> {
-    await this.delay(200);
+    await this.delay(this.thinkDelayMs);
 
     const requesterGain = this.evaluateCardForPlayer(request.card, request.player);
     const myGain = this.evaluateCard(request.card);
@@ -746,7 +749,7 @@ export class IntermediateBot extends AIPlayer {
   }
 
   async takeTurn(): Promise<void> {
-    await this.delay(400);
+    await this.delay(this.thinkDelayMs);
 
     // 1. Draw decision
     const topDiscard = this.game.discardPile[this.game.discardPile.length - 1];
@@ -757,7 +760,7 @@ export class IntermediateBot extends AIPlayer {
       this.game.drawCard();
     }
 
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     // 2. Try to go down
     await this.buildMelds();
@@ -765,13 +768,15 @@ export class IntermediateBot extends AIPlayer {
     // 3. Try to add to existing melds
     await this.addToMelds();
 
+    await this.delay(this.thinkDelayMs);
+
     // 4. Discard weakest card
     const discard = this.chooseDiscard();
     if (discard) {
       this.game.discard(discard);
     }
 
-    await this.delay(200);
+    await this.delay(this.thinkDelayMs);
     await this.game.endTurn();
   }
 
@@ -785,7 +790,7 @@ export class IntermediateBot extends AIPlayer {
   }
 
   async considerMayIRequest(request: MayIRequest): Promise<void> {
-    await this.delay(300);
+    await this.delay(this.thinkDelayMs);
 
     // Only deny if the card would help opponent less than it hurts you
     const helpsMe = this.shouldTakeDiscard(request.card);
@@ -853,7 +858,7 @@ export class TimBot extends AIPlayer {
   }
 
   async takeTurn(): Promise<void> {
-    await super.delay(300);
+    await this.delay(this.thinkDelayMs);
     await this.game.waitForNoPendingMayI();
 
     // TODO: implement klennedy rules
@@ -861,15 +866,18 @@ export class TimBot extends AIPlayer {
     // Determine if drawing from the discard pile
     const shouldDrawDiscard = this.testDiscard();
 
-    const card = shouldDrawDiscard
-      ? this.game.drawDiscard()
-      : this.game.drawCard();
+    let card: Card | null = null;
+    do {
+      card = shouldDrawDiscard
+        ? this.game.drawDiscard()
+        : this.game.drawCard();
+    } while (!card);
     if (!card) return;
 
     await this.delay(this.thinkDelayMs);
     await this.game.waitForNoPendingMayI();
     const index = Math.floor(Math.random() * (this.player.hand.length + 1));
-    this.game.playerTakesCardOnTable(index);
+    this.game.takeCardOnTable(index);
 
     await this.delay(this.thinkDelayMs);
     await this.game.waitForNoPendingMayI();
@@ -881,7 +889,7 @@ export class TimBot extends AIPlayer {
 
     await this.delay(this.thinkDelayMs);
     await this.game.waitForNoPendingMayI();
-    if( this.player.hand.length === 0 ) {
+    if (this.player.hand.length === 0) {
       console.log(`> ${this.player.name}: I can't discard. Did I win?`);
       return; // cannot discard, probably just went out
     }
