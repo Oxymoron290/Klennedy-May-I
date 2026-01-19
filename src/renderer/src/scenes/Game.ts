@@ -3,7 +3,7 @@ import io, { Socket } from 'socket.io-client';
 import { LocalGameState } from '../models/LocalGameState';
 import { MultiplayerGameState } from '../models/MultiplayerGameState';
 import { GameState, MayIRequest, MayIResponse } from '../models/GameState';
-import { Card } from '../models/Types';
+import { Card, roundConfigs } from '../models/Types';
 import { IPlayer, Meld } from '../models/Player';
 import { EasyBot, HardBot, ExpertBot, TimBot } from "../models/AIPlayer";
 
@@ -29,6 +29,7 @@ export default class GameScene extends Phaser.Scene {
   scoreboardContainer!: Phaser.GameObjects.Container;
   mayIContainer!: Phaser.GameObjects.Container;
   cardSummaryContainer!: Phaser.GameObjects.Container;
+  meldContainer!: Phaser.GameObjects.Container;
 
   private joinBtn: Phaser.GameObjects.Text | null = null;
   private localBtn: Phaser.GameObjects.Text | null = null;
@@ -242,7 +243,11 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(80)
       .setVisible(false);
 
-    this.cardSummaryContainer = this.add.container(140, 590)
+    this.meldContainer = this.add.container(550, 560)
+      .setDepth(9)
+      .setVisible(false);
+
+    this.cardSummaryContainer = this.add.container(160, 120)
       .setDepth(70)
       .setVisible(true);
 
@@ -395,6 +400,8 @@ export default class GameScene extends Phaser.Scene {
     this.renderPlayerName();
 
     this.renderScoreboard();
+
+    this.renderMeldSockets();
 
     // Render opponent hands (AI or real players)
     this.renderOpponentHands();
@@ -1199,6 +1206,79 @@ export default class GameScene extends Phaser.Scene {
       }
 
     });
+  }
+
+  private renderMeldSockets() {
+    this.meldContainer.removeAll(true);
+    this.meldContainer.setVisible(false);
+    if(!this.gameState) return;
+
+    // If it is the current player's turn and they have not laid down melds yet
+    if (this.gameState?.isPlayerTurn() && !this.gameState.isPlayerDown()) {
+      // display empty meld sockets for interaction. with submission handling.
+      
+      const roundConfig = roundConfigs.at(this.gameState.currentRound);
+      console.log(roundConfig);
+      const sets = roundConfig?.sets || 0;
+      const runs = roundConfig?.runs || 0;
+
+      const cardWidth = 60;
+      const cardPadding = 10;
+      const setWidth = (cardWidth + cardPadding) * 3;
+      const runWidth = (cardWidth + cardPadding) * 4;
+      const totalWidth = (sets * (setWidth + 10)) + (runs * (runWidth + 10)) + 10;
+      const startx = -(totalWidth / 2) + 100;
+
+      const bg = this.add.graphics();
+
+      bg.fillStyle(0x000000, 0.6);
+      bg.fillRoundedRect(startx, -60, totalWidth, 130, 11); // 11 = corner radius
+
+      bg.setPosition(0, 0);
+      this.meldContainer.add(bg);
+
+      for(let i = 0; i < sets; i++) {
+        const meldStartX = startx + 10 + i * (setWidth + 10);
+        const setbg = this.add.graphics();
+
+        setbg.fillStyle(0x000000, 0.2);
+        setbg.fillRoundedRect(meldStartX, -50, setWidth, 110, 11); // 11 = corner radius
+
+        setbg.setPosition(0, 0);
+        this.meldContainer.add(setbg);
+
+        for(let j = 0; j < 3; j++) {
+          const cardStartX = meldStartX + cardPadding + j * (cardWidth + cardPadding) + 25;
+          const socketBg = this.add.rectangle(cardStartX, 5, cardWidth, 90, 0x222222, 0.8)
+            .setStrokeStyle(2, 0xffffff, 0.3);
+          this.meldContainer.add(socketBg);
+        }
+      }
+
+      for(let i = 0; i < runs; i++) {
+        const meldStartX = startx + 10 + (sets * (setWidth + 10)) + i * (runWidth + 10)
+        const setbg = this.add.graphics();
+
+        setbg.fillStyle(0x000000, 0.2);
+        setbg.fillRoundedRect(meldStartX, -50, runWidth, 110, 11); // 11 = corner radius
+
+        setbg.setPosition(0, 0);
+        this.meldContainer.add(setbg);
+
+        for(let j = 0; j < 4; j++) {
+          const cardStartX = meldStartX + cardPadding + j * (cardWidth + cardPadding) + 25;
+          const socketBg = this.add.rectangle(cardStartX, 5, cardWidth, 90, 0x222222, 0.8)
+            .setStrokeStyle(2, 0xffffff, 0.3);
+          this.meldContainer.add(socketBg);
+        }
+      }
+
+      
+      this.meldContainer.setVisible(true);
+    }
+
+    // TODO: For any player that has laid down, display their melds in front of them.
+    // Submitted melds should behave similar to hands, but face-up and only the ability to append to the beginning or the end.
   }
 
   private getPlayerHandWorldPosition(player: IPlayer): { x: number; y: number } | null {

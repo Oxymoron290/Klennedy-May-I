@@ -258,8 +258,11 @@ export class LocalGameState implements GameState {
     return this.roundMelds;
   }
 
-  isPlayerDown(player: IPlayer): boolean {
-    return this.roundMelds.some(m => m.owner.id === player.id);
+  isPlayerDown(player?: IPlayer): boolean {
+    if (!player) {
+      player = this.players.find(p => p.isPlayer);
+    }
+    return this.roundMelds.some(m => m.owner.id === player!.id);
   }
 
   private initializePlayers() {
@@ -538,7 +541,7 @@ export class LocalGameState implements GameState {
     } else {
       card = this.discardPile.pop()!;
     }
-    
+
     this.cardOnTable = card;
     this.drawnThisTurn = true;
     if(!this.isPlayerTurn()) {

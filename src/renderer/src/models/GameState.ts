@@ -49,7 +49,7 @@ export interface GameState {
   getCurrentPlayerHand(): Card[];
   isPlayerTurn(player?: IPlayer): boolean;
   getRoundMelds(): Meld[];
-  isPlayerDown(player: IPlayer): boolean;
+  isPlayerDown(player?: IPlayer): boolean;
   getOpponents(): IPlayer[];
 
   // Player Controls
