@@ -46,8 +46,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.atlasXML('cards', '/playingCards.png', '/playingCards.xml')
-    this.load.atlasXML('backs', '/playingCardBacks.png', '/playingCardBacks.xml')
+    this.load.atlasXML('cards', './playingCards.png', './playingCards.xml')
+    this.load.atlasXML('backs', './playingCardBacks.png', './playingCardBacks.xml')
   }
 
   private scoreBoardOffset() {

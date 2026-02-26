@@ -1,12 +1,12 @@
 import { app, BrowserWindow } from 'electron'
-import { initSocketServer } from '@main/socketServer'  // We'll add later
+import path from 'path'
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: './preload/index.js',
+      preload: path.join(__dirname, '..', 'preload', 'index.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -16,9 +16,7 @@ function createWindow() {
     win.webContents.openDevTools()
   }
 
-  // Load renderer (Vite dev or built)
-  const url = process.env.VITE_DEV_SERVER_URL || `file://${__dirname}/../renderer/index.html`
-  win.loadURL(url as string)
+  win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
 }
 
 app.whenReady().then(createWindow)
