@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import io, { Socket } from 'socket.io-client';
+import { v4 as uuidv4 } from 'uuid';
 import { LocalGameState } from '../models/LocalGameState';
 import { MultiplayerGameState } from '../models/MultiplayerGameState';
 import { GameState, MayIRequest, MayIResponse } from '../models/GameState';
@@ -37,6 +38,10 @@ export default class GameScene extends Phaser.Scene {
   private opponentHandContainers: Phaser.GameObjects.Container[] = [];
   private opponentNameTexts: Phaser.GameObjects.Text[] = [];
   private pendingCardSprite: Phaser.GameObjects.Sprite | null = null;
+  private selectedCards: Set<string> = new Set();
+  private meldBuilderContainer!: Phaser.GameObjects.Container;
+  private pendingMelds: Array<{ type: 'set' | 'run'; cardGuids: string[] }> = [];
+  private tableMeldsContainer!: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: 'GameScene' })
@@ -55,6 +60,8 @@ export default class GameScene extends Phaser.Scene {
   private startMultiplayerGame() {
     this.socket = io('http://localhost:3001')
     this.gameState = new MultiplayerGameState(this.socket)
+    this.selectedCards.clear();
+    this.pendingMelds = [];
     this.wireGameState();
     if(this.joinBtn) { this.joinBtn.destroy(); }
     if(this.localBtn) { this.localBtn.destroy(); }
@@ -62,6 +69,8 @@ export default class GameScene extends Phaser.Scene {
 
   private startSinglePlayerGame() {
     this.gameState = new LocalGameState();
+    this.selectedCards.clear();
+    this.pendingMelds = [];
     
     const botTypes = [
       EasyBot, 
@@ -149,10 +158,12 @@ export default class GameScene extends Phaser.Scene {
 
     this.gameState!.onMeldSubmitted((melds: Meld[]) => {
       console.log('Renderer: Melds submitted:', melds);
+      this.updateFromGameState();
     });
 
     this.gameState!.onMeldAppended((meld: Meld, cards: Card[]) => {
       console.log('Renderer: Cards added to meld:', meld, cards);
+      this.updateFromGameState();
     });
   }
 
@@ -243,6 +254,14 @@ export default class GameScene extends Phaser.Scene {
     this.cardSummaryContainer = this.add.container(140, 590)
       .setDepth(70)
       .setVisible(true);
+
+    this.meldBuilderContainer = this.add.container(600, 560)
+      .setDepth(50)
+      .setVisible(false);
+
+    this.tableMeldsContainer = this.add.container(600, 300)
+      .setDepth(40)
+      .setVisible(false);
 
     // Hand Container & Drop Zone
     this.handContainer = this.add.container(600, 700).setDepth(10).setVisible(false)
@@ -382,6 +401,15 @@ export default class GameScene extends Phaser.Scene {
       }
     }
 
+    // Clear meld selection state when not actionable
+    const canAct = this.gameState!.isPlayerTurn()
+      && this.gameState!.drawnThisTurn
+      && !this.gameState!.discardedThisTurn;
+    if (!canAct) {
+      this.selectedCards.clear();
+      this.pendingMelds = [];
+    }
+
     // Human hand
     const player = this.gameState!.players.find(p => p.isPlayer)!;
     this.renderHand(player.hand);
@@ -398,6 +426,9 @@ export default class GameScene extends Phaser.Scene {
     this.renderOpponentHands();
 
     this.renderMayIOverlay();
+
+    this.renderTableMelds();
+    this.renderMeldBuilder();
   }
 
   private renderScoreboard() {
@@ -677,10 +708,15 @@ export default class GameScene extends Phaser.Scene {
     const spacing = 55
     const startX = -(hand.length - 1) * spacing / 2
 
+    const canSelect = this.gameState!.isPlayerTurn()
+      && this.gameState!.drawnThisTurn
+      && !this.gameState!.discardedThisTurn;
+
     for (let i = 0; i < hand.length; i++) {
       const card = hand[i]
       const frameName = this.getFrameName(card)
-      const yOffset = Math.abs(i - (hand.length - 1) / 2) * 8
+      const isSelected = this.selectedCards.has(card.guid);
+      const yOffset = Math.abs(i - (hand.length - 1) / 2) * 8 - (isSelected ? 15 : 0);
       const sprite = this.add.sprite(startX + i * spacing, yOffset, 'cards', frameName)
         .setScale(cardScale)
         .setInteractive({ draggable: true })
@@ -688,12 +724,271 @@ export default class GameScene extends Phaser.Scene {
 
       sprite.setRotation((i - hand.length / 2) * 0.04)
 
-      sprite.on('pointerover', () => sprite.setTint(0xcccccc))
-      sprite.on('pointerout', () => sprite.clearTint())
+      if (isSelected) {
+        sprite.setTint(0xffff00);
+      }
+
+      sprite.on('pointerover', () => { if (!this.selectedCards.has(card.guid)) sprite.setTint(0xcccccc); })
+      sprite.on('pointerout', () => { if (!this.selectedCards.has(card.guid)) sprite.clearTint(); })
+
+      if (canSelect) {
+        sprite.on('pointerdown', () => {
+          if (this.selectedCards.has(card.guid)) {
+            this.selectedCards.delete(card.guid);
+          } else {
+            this.selectedCards.add(card.guid);
+          }
+          const player = this.gameState!.players.find(p => p.isPlayer)!;
+          this.renderHand(player.hand);
+          this.renderMeldBuilder();
+        });
+      }
 
       this.handContainer.add(sprite)
       this.handSprites.set(sprite, card)
     }
+  }
+
+  private renderMeldBuilder(): void {
+    this.meldBuilderContainer.removeAll(true);
+
+    const player = this.gameState?.players.find(p => p.isPlayer);
+    if (!player) { this.meldBuilderContainer.setVisible(false); return; }
+
+    const isDown = this.gameState!.isPlayerDown(player);
+    const canAct = this.gameState!.isPlayerTurn()
+      && this.gameState!.drawnThisTurn
+      && !this.gameState!.discardedThisTurn;
+
+    // If player is already down, meld builder is not needed (add-to-meld uses table clicks)
+    if (isDown || !canAct) {
+      this.meldBuilderContainer.setVisible(false);
+      return;
+    }
+
+    const hasSelection = this.selectedCards.size > 0;
+    const hasPending = this.pendingMelds.length > 0;
+
+    if (!hasSelection && !hasPending) {
+      this.meldBuilderContainer.setVisible(false);
+      return;
+    }
+
+    this.meldBuilderContainer.setVisible(true);
+    let yOffset = 0;
+
+    // Action buttons when cards are selected
+    if (hasSelection) {
+      const createSetBtn = this.add.text(-100, yOffset, 'Create Set', {
+        fontSize: '16px', color: '#000', backgroundColor: '#00ff00',
+        padding: { x: 12, y: 6 }
+      }).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+      createSetBtn.on('pointerdown', () => {
+        this.pendingMelds.push({ type: 'set', cardGuids: [...this.selectedCards] });
+        this.selectedCards.clear();
+        const p = this.gameState!.players.find(pl => pl.isPlayer)!;
+        this.renderHand(p.hand);
+        this.renderMeldBuilder();
+      });
+      this.meldBuilderContainer.add(createSetBtn);
+
+      const createRunBtn = this.add.text(100, yOffset, 'Create Run', {
+        fontSize: '16px', color: '#000', backgroundColor: '#00ff00',
+        padding: { x: 12, y: 6 }
+      }).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+      createRunBtn.on('pointerdown', () => {
+        this.pendingMelds.push({ type: 'run', cardGuids: [...this.selectedCards] });
+        this.selectedCards.clear();
+        const p = this.gameState!.players.find(pl => pl.isPlayer)!;
+        this.renderHand(p.hand);
+        this.renderMeldBuilder();
+      });
+      this.meldBuilderContainer.add(createRunBtn);
+
+      yOffset += 35;
+    }
+
+    // Render pending melds
+    this.pendingMelds.forEach((pm, meldIdx) => {
+      const label = this.add.text(-250, yOffset, `${pm.type.toUpperCase()}:`, {
+        fontSize: '14px', color: '#ffffff'
+      });
+      this.meldBuilderContainer.add(label);
+
+      pm.cardGuids.forEach((guid, cardIdx) => {
+        const card = player.hand.find(c => c.guid === guid);
+        if (card) {
+          const cardSprite = this.add.sprite(-180 + cardIdx * 40, yOffset + 10, 'cards', this.getFrameName(card))
+            .setScale(0.35);
+          this.meldBuilderContainer.add(cardSprite);
+        }
+      });
+
+      const removeBtn = this.add.text(200, yOffset, 'Remove', {
+        fontSize: '14px', color: '#fff', backgroundColor: '#ff0000',
+        padding: { x: 8, y: 4 }
+      }).setOrigin(0.5, 0).setInteractive({ cursor: 'pointer' });
+      removeBtn.on('pointerdown', () => {
+        this.pendingMelds.splice(meldIdx, 1);
+        this.renderMeldBuilder();
+      });
+      this.meldBuilderContainer.add(removeBtn);
+
+      yOffset += 40;
+    });
+
+    // Check if pending melds match round requirement
+    if (hasPending) {
+      const state: any = this.gameState;
+      const config = (state.roundConfigs ?? [])[state.currentRound ?? 0];
+      if (config) {
+        const requiredSets = config.sets ?? 0;
+        const requiredRuns = config.runs ?? 0;
+        const sets = this.pendingMelds.filter(m => m.type === 'set').length;
+        const runs = this.pendingMelds.filter(m => m.type === 'run').length;
+
+        if (sets === requiredSets && runs === requiredRuns) {
+          const goDownBtn = this.add.text(0, yOffset + 5, '⬇ Go Down ⬇', {
+            fontSize: '20px', color: '#000', backgroundColor: '#00ff00',
+            padding: { x: 20, y: 8 }, fontStyle: 'bold'
+          }).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+          goDownBtn.on('pointerdown', () => this.submitAllMelds());
+          this.meldBuilderContainer.add(goDownBtn);
+        } else {
+          const info = this.add.text(0, yOffset + 5,
+            `Need ${requiredSets} set(s) & ${requiredRuns} run(s) — have ${sets} set(s) & ${runs} run(s)`, {
+            fontSize: '13px', color: '#ffcc00'
+          }).setOrigin(0.5);
+          this.meldBuilderContainer.add(info);
+        }
+      }
+    }
+  }
+
+  private submitAllMelds(): void {
+    const player = this.gameState!.players.find(p => p.isPlayer)!;
+    const melds: Meld[] = this.pendingMelds.map(pm => ({
+      id: uuidv4(),
+      type: pm.type,
+      owner: player,
+      cards: pm.cardGuids.map(guid => ({
+        player: player,
+        card: player.hand.find(c => c.guid === guid)!
+      }))
+    }));
+
+    const success = this.gameState!.submitMelds(melds);
+    if (success) {
+      this.pendingMelds = [];
+      this.selectedCards.clear();
+      this.updateFromGameState();
+    } else {
+      // Flash red error feedback on meld builder
+      this.meldBuilderContainer.each((child: Phaser.GameObjects.GameObject) => {
+        if (child instanceof Phaser.GameObjects.Text) {
+          child.setColor('#ff0000');
+        }
+      });
+      this.time.delayedCall(600, () => this.renderMeldBuilder());
+    }
+  }
+
+  private renderTableMelds(): void {
+    this.tableMeldsContainer.removeAll(true);
+
+    const melds = this.gameState?.getRoundMelds() ?? [];
+    if (melds.length === 0) {
+      this.tableMeldsContainer.setVisible(false);
+      return;
+    }
+
+    this.tableMeldsContainer.setVisible(true);
+
+    const player = this.gameState!.players.find(p => p.isPlayer)!;
+    const isDown = this.gameState!.isPlayerDown(player);
+    const canAddToMeld = isDown
+      && this.gameState!.isPlayerTurn()
+      && this.gameState!.drawnThisTurn
+      && !this.gameState!.discardedThisTurn;
+
+    // Group melds by owner
+    const byOwner = new Map<string, Meld[]>();
+    melds.forEach(m => {
+      const key = m.owner.name;
+      if (!byOwner.has(key)) byOwner.set(key, []);
+      byOwner.get(key)!.push(m);
+    });
+
+    let yOffset = 0;
+    byOwner.forEach((ownerMelds, ownerName) => {
+      const ownerLabel = this.add.text(-350, yOffset, ownerName, {
+        fontSize: '14px', color: '#00e6ff', fontStyle: 'bold'
+      });
+      this.tableMeldsContainer.add(ownerLabel);
+      yOffset += 20;
+
+      ownerMelds.forEach(meld => {
+        const typeLabel = this.add.text(-350, yOffset, `${meld.type}:`, {
+          fontSize: '12px', color: '#aaaaaa'
+        });
+        this.tableMeldsContainer.add(typeLabel);
+
+        // Render meld card sprites
+        const meldGroup: Phaser.GameObjects.Sprite[] = [];
+        meld.cards.forEach((mc, idx) => {
+          const cardSprite = this.add.sprite(-290 + idx * 35, yOffset + 15, 'cards', this.getFrameName(mc.card))
+            .setScale(0.4);
+          this.tableMeldsContainer.add(cardSprite);
+          meldGroup.push(cardSprite);
+        });
+
+        // Make meld group an interactive drop target for add-to-meld
+        if (canAddToMeld) {
+          const hitWidth = Math.max(meld.cards.length * 35 + 30, 80);
+          const hitZone = this.add.rectangle(-290 + (meld.cards.length - 1) * 17.5, yOffset + 15, hitWidth, 50, 0x00ff00, 0)
+            .setInteractive({ cursor: 'pointer' });
+          this.tableMeldsContainer.add(hitZone);
+
+          hitZone.on('pointerover', () => {
+            if (this.selectedCards.size > 0) {
+              meldGroup.forEach(s => s.setTint(0x88ff88));
+            }
+          });
+          hitZone.on('pointerout', () => {
+            meldGroup.forEach(s => s.clearTint());
+          });
+          hitZone.on('pointerdown', () => {
+            if (this.selectedCards.size === 0) return;
+            const cards: Card[] = [];
+            this.selectedCards.forEach(guid => {
+              const c = player.hand.find(card => card.guid === guid);
+              if (c) cards.push(c);
+            });
+            if (cards.length === 0) return;
+            const success = this.gameState!.addToMeld(meld, cards);
+            if (success) {
+              this.selectedCards.clear();
+              this.updateFromGameState();
+            } else {
+              meldGroup.forEach(s => s.setTint(0xff0000));
+              this.time.delayedCall(400, () => meldGroup.forEach(s => s.clearTint()));
+            }
+          });
+        }
+
+        yOffset += 40;
+      });
+
+      yOffset += 5;
+    });
+
+    // Center the table melds container vertically
+    const totalHeight = yOffset;
+    this.tableMeldsContainer.each((child: Phaser.GameObjects.GameObject) => {
+      if ('y' in child) {
+        (child as any).y -= totalHeight / 2;
+      }
+    });
   }
 
   private getFrameName(card: Card): string {

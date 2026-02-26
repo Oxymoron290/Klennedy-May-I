@@ -39,9 +39,10 @@ export class LocalGameState implements GameState {
   private onMeldSubmittedCallbacks: Array<(melds: Meld[]) => void> = [];
   private onMeldAppendedCallbacks: Array<(meld: Meld, cards: Card[]) => void> = [];
 
-  constructor(decks: number = 3, totalPlayers: number = 5) {
-    this.decks = decks;
+  constructor(totalPlayers: number = 5, decks?: number) {
     this.totalPlayers = totalPlayers;
+    // Deck count per GameRules: base of 2 + ceil(players / 2)
+    this.decks = decks ?? 2 + Math.ceil(totalPlayers / 2);
     this.initializePlayers();
   }
 
@@ -178,7 +179,7 @@ export class LocalGameState implements GameState {
       // Add card to requesting player's hand
       request.player.hand.push(request.card);
 
-      // TODO: Klennedy rule.
+      // Klennedy rule: requester gets penalty card from draw pile
       if (this.drawPile.length > 0) {
         const penaltyCard = this.drawPile.pop()!;
         request.player.hand.push(penaltyCard);
