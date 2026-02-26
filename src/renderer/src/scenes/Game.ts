@@ -45,6 +45,7 @@ export default class GameScene extends Phaser.Scene {
   private lobbyContainer!: Phaser.GameObjects.Container;
   private lobbyPlayerCount: number = 5;
   private lobbyNameInput!: Phaser.GameObjects.DOMElement;
+  private lobbyRoomInput!: Phaser.GameObjects.DOMElement;
   private roundTransitionContainer!: Phaser.GameObjects.Container;
   private gameOverContainer!: Phaser.GameObjects.Container;
 
@@ -63,11 +64,15 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private startMultiplayerGame() {
+    const nameInput = this.lobbyNameInput?.node as HTMLInputElement | null;
+    const playerName = nameInput?.value?.trim() || 'Player';
+    const roomId = (this.lobbyRoomInput?.node as HTMLInputElement | null)?.value?.trim() || 'default';
     this.socket = io('http://localhost:3001')
-    this.gameState = new MultiplayerGameState(this.socket)
+    this.gameState = new MultiplayerGameState(this.socket, playerName)
     this.selectedCards.clear();
     this.pendingMelds = [];
     this.wireGameState();
+    this.socket.emit('joinRoom', { roomId, playerName });
     if (this.lobbyContainer) this.lobbyContainer.destroy();
     if(this.joinBtn) { this.joinBtn.destroy(); }
     if(this.localBtn) { this.localBtn.destroy(); }
@@ -243,9 +248,15 @@ export default class GameScene extends Phaser.Scene {
 
     // Multiplayer button (secondary)
     if (this.onlineModeEnabled) {
-      const mpBtn = this.add.text(0, 110, 'Multiplayer', {
+      this.lobbyRoomInput = this.add.dom(0, 90).createFromHTML(
+        '<input type="text" placeholder="Room Code" value="default" style="font-size:14px; padding:6px; width:160px; text-align:center; border-radius:4px; border:1px solid #555; background:#222; color:#fff;" />'
+      );
+      this.lobbyContainer.add(this.lobbyRoomInput);
+
+      const mpBtn = this.add.text(0, 130, 'Join Multiplayer', {
         fontSize: '16px',
         color: '#aaa',
+        backgroundColor: '#333',
         padding: { x: 12, y: 6 }
       }).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
       mpBtn.on('pointerdown', () => this.startMultiplayerGame());
