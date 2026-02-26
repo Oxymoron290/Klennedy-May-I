@@ -33,6 +33,12 @@ export const validateMeld = (meld: Meld, initial: boolean = false): boolean => {
     // All cards must be of the same suit and consecutive ranks
     if (!meld.cards || meld.cards.length === 0) return false;
 
+    // No run may contain more than 13 cards
+    if (meld.cards.length > 13) {
+      console.log('Runs cannot contain more than 13 cards.');
+      return false;
+    }
+
     const suit = meld.cards[0].card.suit;
 
     // All cards same suit
@@ -58,14 +64,46 @@ export const validateMeld = (meld: Meld, initial: boolean = false): boolean => {
     // No duplicate ranks
     if (new Set(ranks).size !== ranks.length) return false;
 
-    // Must be strictly consecutive
-    for (let i = 1; i < ranks.length; i++) {
-      if (ranks[i] !== ranks[i - 1] + 1) return false;
-    }
-
-    return true;
+    // Check for consecutive sequence, with Ace (1) allowed as high (after K) and/or wrapping
+    return isConsecutiveWithAceWrap(ranks);
   }
   return false;
+}
+
+// Validates that sorted ranks form a consecutive sequence.
+// Ace (1) can be low (A-2-3...), high (...Q-K-A), or wrap (...K-A-2...).
+function isConsecutiveWithAceWrap(sortedRanks: number[]): boolean {
+  // Try standard consecutive first (no wrapping)
+  if (isStrictlyConsecutive(sortedRanks)) return true;
+
+  // If Ace is present, try treating it as rank 14 (high)
+  if (sortedRanks[0] === 1) {
+    const withHighAce = [...sortedRanks.slice(1), 14].sort((a, b) => a - b);
+    if (isStrictlyConsecutive(withHighAce)) return true;
+
+    // Ace wrapping: find the best split where Ace bridges low and high
+    // e.g., [1,2,3,11,12,13] → treat as [11,12,13,14,15,16] — no, that doesn't work.
+    // Wrapping means the run goes ...Q(12)-K(13)-A(1)-2-3...
+    // Represent as contiguous: [11,12,13,14,15,16] by mapping 1→14, 2→15, 3→16 etc.
+    // Only valid if the sequence is contiguous when some low cards are shifted up by 13
+    for (let splitIdx = 1; splitIdx < sortedRanks.length; splitIdx++) {
+      if (sortedRanks[splitIdx] === 1) continue; // skip if multiple aces somehow
+      const wrapped = [
+        ...sortedRanks.slice(splitIdx),
+        ...sortedRanks.slice(0, splitIdx).map(r => r + 13)
+      ].sort((a, b) => a - b);
+      if (isStrictlyConsecutive(wrapped)) return true;
+    }
+  }
+
+  return false;
+}
+
+function isStrictlyConsecutive(ranks: number[]): boolean {
+  for (let i = 1; i < ranks.length; i++) {
+    if (ranks[i] !== ranks[i - 1] + 1) return false;
+  }
+  return true;
 }
 
 export interface IPlayer {

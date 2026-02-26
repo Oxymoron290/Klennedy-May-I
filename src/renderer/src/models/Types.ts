@@ -28,12 +28,12 @@ export const values: Record<Rank, 5 | 10 | 15> = {
   5: 5,
   6: 5,
   7: 5,
-  8: 10,
-  9: 10,
+  8: 5,
+  9: 5,
   10: 10,
   11: 10, // Jack
   12: 10, // Queen
-  13: 15  // King
+  13: 10  // King
 }
 
 export type BucketValue = 5 | 10 | 15;

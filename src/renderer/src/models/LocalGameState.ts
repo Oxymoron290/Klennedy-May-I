@@ -20,6 +20,9 @@ export class LocalGameState implements GameState {
   cardOnTable: Card | null = null;
   drawnThisTurn: boolean = false;
   discardedThisTurn: boolean = false;
+  private stockDepletionCount: number = 0;
+  // Players who picked out of turn via May I — cannot play cards until their next regular turn
+  private mayIPickedThisCycle: Set<string> = new Set();
 
   private onGameStartCallbacks: Array<() => void> = [];
   private onGameEndCallbacks: Array<() => void> = [];
@@ -312,6 +315,8 @@ export class LocalGameState implements GameState {
     this.discardedThisTurn = false;
     this.cardOnTable = null;
     this.roundMelds = [];
+    this.stockDepletionCount = 0;
+    this.mayIPickedThisCycle.clear();
     this.initializeDeck();
     this.dealCards();
     this.roundStart();
@@ -360,6 +365,12 @@ export class LocalGameState implements GameState {
       return false;
     }
 
+    // Player who picked out of turn cannot play cards until their next regular turn
+    if (this.mayIPickedThisCycle.has(currentPlayer.id)) {
+      console.log("Cannot play cards this turn — picked out of turn via May I.");
+      return false;
+    }
+
     // Ensure the player hasn't already done down
     if (this.roundMelds.some(m => m.owner.id === currentPlayer.id)) {
       console.log("Player has already gone down this round.");
@@ -391,6 +402,13 @@ export class LocalGameState implements GameState {
         }
         usedCardGuids.add(mc.card.guid);
       }
+    }
+
+    // No two runs may share the same suit
+    const runSuits = melds.filter(m => m.type === 'run').map(m => m.cards[0].card.suit);
+    if (new Set(runSuits).size !== runSuits.length) {
+      console.log("Cannot have two runs of the same suit.");
+      return false;
     }
 
     melds.forEach(meld => {
@@ -444,6 +462,12 @@ export class LocalGameState implements GameState {
 
     if(this.drawnThisTurn === false || this.discardedThisTurn === true) {
       console.log("Cannot submit melds at this time.");
+      return false;
+    }
+
+    // Player who picked out of turn cannot play cards until their next regular turn
+    if (this.mayIPickedThisCycle.has(currentPlayer.id)) {
+      console.log("Cannot play cards this turn — picked out of turn via May I.");
       return false;
     }
 
@@ -501,7 +525,15 @@ export class LocalGameState implements GameState {
         this.endRound();
         return null;
       }
-      this.drawPile = this.shuffleDeck(this.discardPile);
+      this.stockDepletionCount++;
+      if (this.stockDepletionCount >= 2) {
+        // Second depletion: round ends, tally all hands
+        console.log('Stock pile depleted a second time. Ending round.');
+        this.endRound();
+        return null;
+      }
+      // Turn over discard pile WITHOUT shuffling to become new stock pile
+      this.drawPile = this.discardPile.reverse();
       this.discardPile = [];
       return this.drawCard();
     }
@@ -531,7 +563,10 @@ export class LocalGameState implements GameState {
     const pendingMayI = this.mayIRequests.find(r => r.resolved === false);
     if (pendingMayI) {
       console.log('Drawing from discard pile rejects pending May I request');
-      this.resolveMayI(pendingMayI, pendingMayI.player, null);
+      pendingMayI.resolved = true;
+      if (pendingMayI.resolve) {
+        pendingMayI.resolve(false);
+      }
     }
 
     const card = this.discardPile.pop()!;
@@ -708,12 +743,14 @@ export class LocalGameState implements GameState {
     // Winner takes requested card
     req.winner!.hand.push(req.card);
 
+    // Winner picked out of turn — cannot play cards until their next regular turn
+    this.mayIPickedThisCycle.add(req.winner!.id);
+
     // Winner takes penalty card
     if (this.drawPile.length > 0) {
       const penaltyCard = this.drawPile.pop()!;
       req.winner!.hand.push(penaltyCard);
       if(req.winner!.id === this.getCurrentPlayer()!.id) {
-        // TODO: need to muck the penalty card from other players
         req.penaltyCard = penaltyCard;
       }
     }
@@ -754,11 +791,17 @@ export class LocalGameState implements GameState {
     }
   }
 
+  private isFinalRound(): boolean {
+    return this.currentRound === this.roundConfigs.length - 1;
+  }
+
   async endTurn(): Promise<void> {
     if (this.checkForWin()) {
       return;
     }
-    if (!this.drawnThisTurn || !this.discardedThisTurn) {
+    // Round 7 (final): player can end turn without discarding if hand is empty (all played, no throw away)
+    const finalRoundNoDiscard = this.isFinalRound() && this.getCurrentPlayer()!.hand.length === 0;
+    if (!this.drawnThisTurn || (!this.discardedThisTurn && !finalRoundNoDiscard)) {
       console.log("Must draw and discard before ending turn.");
       return;
     }
@@ -768,6 +811,12 @@ export class LocalGameState implements GameState {
     this.drawnThisTurn = false;
     this.discardedThisTurn = false;
     this.cardOnTable = null;
+
+    // Clear May I pick restriction for the new current player (their regular turn has started)
+    const nextPlayer = this.getCurrentPlayer();
+    if (nextPlayer) {
+      this.mayIPickedThisCycle.delete(nextPlayer.id);
+    }
 
     const currentPlayer = this.getCurrentPlayer();
     if (currentPlayer) {
