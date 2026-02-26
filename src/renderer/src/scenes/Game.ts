@@ -16,7 +16,7 @@ export default class GameScene extends Phaser.Scene {
   wandaMode: boolean = true;
   gameState!: GameState | null;
   resolvedMayIRequests: MayIRequest[] = [];
-
+  private mayIAnimating: boolean = false;
   handContainer!: Phaser.GameObjects.Container;
   handSprites: Map<Phaser.GameObjects.Sprite, Card> = new Map();
   discardContainer!: Phaser.GameObjects.Container;
@@ -42,6 +42,11 @@ export default class GameScene extends Phaser.Scene {
   private meldBuilderContainer!: Phaser.GameObjects.Container;
   private pendingMelds: Array<{ type: 'set' | 'run'; cardGuids: string[] }> = [];
   private tableMeldsContainer!: Phaser.GameObjects.Container;
+  private lobbyContainer!: Phaser.GameObjects.Container;
+  private lobbyPlayerCount: number = 5;
+  private lobbyNameInput!: Phaser.GameObjects.DOMElement;
+  private roundTransitionContainer!: Phaser.GameObjects.Container;
+  private gameOverContainer!: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: 'GameScene' })
@@ -63,12 +68,16 @@ export default class GameScene extends Phaser.Scene {
     this.selectedCards.clear();
     this.pendingMelds = [];
     this.wireGameState();
+    if (this.lobbyContainer) this.lobbyContainer.destroy();
     if(this.joinBtn) { this.joinBtn.destroy(); }
     if(this.localBtn) { this.localBtn.destroy(); }
   }
 
   private startSinglePlayerGame() {
-    this.gameState = new LocalGameState();
+    const nameInput = this.lobbyNameInput?.node as HTMLInputElement | null;
+    const playerName = nameInput?.value?.trim() || 'Player';
+
+    this.gameState = new LocalGameState(this.lobbyPlayerCount);
     this.selectedCards.clear();
     this.pendingMelds = [];
     
@@ -81,7 +90,9 @@ export default class GameScene extends Phaser.Scene {
     ];
 
     this.gameState.players.forEach((player, index) => {
-      if (!player.isHuman) {
+      if (player.isHuman) {
+        player.name = playerName;
+      } else {
         const BotClass = botTypes[index % botTypes.length];
         const bot = new BotClass(this.gameState as LocalGameState, player);
 
@@ -94,6 +105,7 @@ export default class GameScene extends Phaser.Scene {
     this.gameState!.startGame();
 
     this.updateFromGameState();
+    if (this.lobbyContainer) this.lobbyContainer.destroy();
     if (this.localBtn) this.localBtn.destroy();
     if (this.joinBtn) this.joinBtn.destroy();
   }
@@ -105,10 +117,12 @@ export default class GameScene extends Phaser.Scene {
 
     this.gameState!.onGameEnd(() => {
       console.log('Renderer: Game ended!');
+      this.showGameOver();
     });
 
     this.gameState!.onRoundStart(() => {
       console.log('Renderer: New round started!');
+      this.showRoundTransition();
     });
 
     this.gameState!.onRoundEnd(() => {
@@ -179,25 +193,70 @@ export default class GameScene extends Phaser.Scene {
       .setVisible(false);
 
     // Mode selection
-    if(this.onlineModeEnabled) {
-      this.joinBtn = this.add.text(600, 150, 'Multiplayer', {
-        fontSize: '24px',
-        color: '#0f0',
-        backgroundColor: '#000',
-        padding: { x: 20, y: 10 }
-      }).setOrigin(0.5).setInteractive({ cursor: 'pointer' })
+    this.lobbyContainer = this.add.container(600, 400).setDepth(100);
 
-      this.joinBtn.on('pointerdown', this.startMultiplayerGame)
+    const lobbyBg = this.add.rectangle(0, 0, 400, 320, 0x000000, 0.85).setOrigin(0.5);
+    this.lobbyContainer.add(lobbyBg);
+
+    // Player count selector
+    const playersLabel = this.add.text(-120, -100, 'Players:', { fontSize: '22px', color: '#fff' }).setOrigin(0, 0.5);
+    this.lobbyContainer.add(playersLabel);
+
+    const countDisplay = this.add.text(60, -100, `${this.lobbyPlayerCount}`, { fontSize: '22px', color: '#0f0' }).setOrigin(0.5);
+    this.lobbyContainer.add(countDisplay);
+
+    const leftArrow = this.add.text(20, -100, '◀', { fontSize: '22px', color: '#aaa' })
+      .setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+    leftArrow.on('pointerdown', () => {
+      if (this.lobbyPlayerCount > 4) {
+        this.lobbyPlayerCount--;
+        countDisplay.setText(`${this.lobbyPlayerCount}`);
+      }
+    });
+    this.lobbyContainer.add(leftArrow);
+
+    const rightArrow = this.add.text(100, -100, '▶', { fontSize: '22px', color: '#aaa' })
+      .setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+    rightArrow.on('pointerdown', () => {
+      if (this.lobbyPlayerCount < 8) {
+        this.lobbyPlayerCount++;
+        countDisplay.setText(`${this.lobbyPlayerCount}`);
+      }
+    });
+    this.lobbyContainer.add(rightArrow);
+
+    // Player name input
+    this.lobbyNameInput = this.add.dom(0, -30).createFromHTML(
+      '<input type="text" placeholder="Your Name" value="Player" style="font-size:18px; padding:8px; width:200px; text-align:center; border-radius:4px; border:1px solid #555; background:#222; color:#fff;" />'
+    );
+    this.lobbyContainer.add(this.lobbyNameInput);
+
+    // Start Game button
+    const startBtn = this.add.text(0, 40, 'Start Game', {
+      fontSize: '28px',
+      color: '#0f0',
+      backgroundColor: '#333',
+      padding: { x: 24, y: 12 }
+    }).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+    startBtn.on('pointerdown', () => this.startSinglePlayerGame());
+    this.lobbyContainer.add(startBtn);
+
+    // Multiplayer button (secondary)
+    if (this.onlineModeEnabled) {
+      const mpBtn = this.add.text(0, 110, 'Multiplayer', {
+        fontSize: '16px',
+        color: '#aaa',
+        padding: { x: 12, y: 6 }
+      }).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+      mpBtn.on('pointerdown', () => this.startMultiplayerGame());
+      this.lobbyContainer.add(mpBtn);
     }
 
-    this.localBtn = this.add.text(600, 200, 'Single Player', {
-      fontSize: '24px',
-      color: '#0f0',
-      backgroundColor: '#000',
-      padding: { x: 20, y: 10 }
-    }).setOrigin(0.5).setInteractive({ cursor: 'pointer' })
+    // Round transition overlay (hidden initially)
+    this.roundTransitionContainer = this.add.container(600, 400).setDepth(90).setVisible(false);
 
-    this.localBtn.on('pointerdown', () => this.startSinglePlayerGame())
+    // Game over overlay (hidden initially)
+    this.gameOverContainer = this.add.container(600, 400).setDepth(95).setVisible(false);
 
     // Draw pile (top back card)
     this.drawPileSprite = this.add.sprite(550, 400, 'backs', this.cardBackTexture)
@@ -524,6 +583,92 @@ export default class GameScene extends Phaser.Scene {
     if (cfg.sets) parts.push(`${cfg.sets} Set${cfg.sets > 1 ? 's' : ''}`);
     if (cfg.runs) parts.push(`${cfg.runs} Run${cfg.runs > 1 ? 's' : ''}`);
     return parts.length ? parts.join(' & ') : '-';
+  }
+
+  private showRoundTransition() {
+    if (!this.gameState) return;
+
+    this.roundTransitionContainer.removeAll(true);
+
+    const state: any = this.gameState;
+    const currentRound: number = state.currentRound ?? 0;
+    const roundCfg = state.roundConfigs?.[currentRound];
+
+    const bg = this.add.rectangle(0, 0, 500, 350, 0x000000, 0.85).setOrigin(0.5);
+    this.roundTransitionContainer.add(bg);
+
+    const title = this.add.text(0, -130, `Round ${currentRound + 1}`, {
+      fontSize: '40px', color: '#fff', fontStyle: 'bold'
+    }).setOrigin(0.5);
+    this.roundTransitionContainer.add(title);
+
+    const requirement = this.add.text(0, -75, `Requirement: ${this.describeRound(roundCfg)}`, {
+      fontSize: '20px', color: '#ffdd44'
+    }).setOrigin(0.5);
+    this.roundTransitionContainer.add(requirement);
+
+    // Scores summary
+    const players = this.gameState.players;
+    let yOff = -30;
+    players.forEach(p => {
+      const total = (p.scores || []).reduce((sum: number, s: number) => sum + (s || 0), 0);
+      const color = p.isPlayer ? '#0f0' : '#ccc';
+      const scoreText = this.add.text(0, yOff, `${p.name}: ${total}`, {
+        fontSize: '16px', color
+      }).setOrigin(0.5);
+      this.roundTransitionContainer.add(scoreText);
+      yOff += 24;
+    });
+
+    this.roundTransitionContainer.setVisible(true);
+
+    this.time.delayedCall(3000, () => {
+      this.roundTransitionContainer.setVisible(false);
+    });
+  }
+
+  private showGameOver() {
+    if (!this.gameState) return;
+
+    this.gameOverContainer.removeAll(true);
+
+    const bg = this.add.rectangle(0, 0, 520, 420, 0x000000, 0.9).setOrigin(0.5);
+    this.gameOverContainer.add(bg);
+
+    const title = this.add.text(0, -170, 'Game Over!', {
+      fontSize: '44px', color: '#ff4444', fontStyle: 'bold'
+    }).setOrigin(0.5);
+    this.gameOverContainer.add(title);
+
+    // Compute totals and find winner
+    const players = this.gameState.players;
+    const totals = players.map(p => (p.scores || []).reduce((sum: number, s: number) => sum + (s || 0), 0));
+    const minTotal = Math.min(...totals);
+
+    let yOff = -100;
+    players.forEach((p, idx) => {
+      const total = totals[idx];
+      const isWinner = total === minTotal;
+      const color = isWinner ? '#ffd700' : (p.isPlayer ? '#0f0' : '#ccc');
+      const prefix = isWinner ? '★ ' : '  ';
+      const scoreText = this.add.text(0, yOff, `${prefix}${p.name}: ${total}`, {
+        fontSize: '18px', color, fontStyle: isWinner ? 'bold' : 'normal'
+      }).setOrigin(0.5);
+      this.gameOverContainer.add(scoreText);
+      yOff += 28;
+    });
+
+    const playAgainBtn = this.add.text(0, yOff + 20, 'Play Again', {
+      fontSize: '28px', color: '#0f0', backgroundColor: '#333',
+      padding: { x: 24, y: 12 }
+    }).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+    playAgainBtn.on('pointerdown', () => {
+      this.gameOverContainer.setVisible(false);
+      this.scene.restart();
+    });
+    this.gameOverContainer.add(playAgainBtn);
+
+    this.gameOverContainer.setVisible(true);
   }
 
   private addPendingCardSprite(card: Card, fromDiscard: boolean = false) {
@@ -1233,6 +1378,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private renderMayIOverlay() {
+    // Don't rebuild overlay while an animation is playing
+    if (this.mayIAnimating) return;
+
     const unresolvedRequests = this.gameState?.mayIRequests.filter(req => !this.resolvedMayIRequests.includes(req)) || [];
     const activeRequest = unresolvedRequests.at(-1) || null;
     // const activeRequest = this.mockMayIRequest();
@@ -1274,6 +1422,7 @@ export default class GameScene extends Phaser.Scene {
     this.mayIContainer.add(titleText);
 
     if(activeRequest.resolved) {
+      this.mayIAnimating = true;
       // TODO: animate the card sprite and penalty sprite moving to the center
       const voteText = this.add.text(-130, 10, activeRequest.deniedBy == null ? "✔" : "✘", {
         fontSize: "72px",
@@ -1317,7 +1466,7 @@ export default class GameScene extends Phaser.Scene {
           }
         },
         {
-          at: 1400, // 400ms animation + 6000ms wait
+          at: 1400, // 400ms animation + 1000ms wait
           tween: {
             targets: [cardSprite, penaltySprite],
             x: localX,
@@ -1326,6 +1475,7 @@ export default class GameScene extends Phaser.Scene {
             duration: 400,
             ease: 'Power2.easeIn',
             onComplete: () => {
+              this.mayIAnimating = false;
               this.mayIContainer.removeAll(true);
               this.mayIContainer.setVisible(false);
             }

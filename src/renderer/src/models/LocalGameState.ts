@@ -336,6 +336,10 @@ export class LocalGameState implements GameState {
     // TODO: Do we need to wait or anything before starting next round?
 
     this.currentRound++;
+    if (this.currentRound >= this.roundConfigs.length) {
+      this.endGame();
+      return;
+    }
     this.startRound();
   }
 
