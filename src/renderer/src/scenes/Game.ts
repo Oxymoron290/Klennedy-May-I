@@ -1504,6 +1504,20 @@ export default class GameScene extends Phaser.Scene {
       this.mayIContainer.add(waiting);
     }
 
+    // Cancel button if I'm the requester
+    if (activeRequest.player.id === me.id) {
+      const cancelBtn = this.add.text(200, -40, "CANCEL", {
+        fontSize: "14px",
+        color: "#ffffff",
+        backgroundColor: "#aa0000",
+        padding: { x: 8, y: 4 }
+      }).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+      cancelBtn.on("pointerdown", () => {
+        this.gameState!.cancelMayI(me, activeRequest);
+      });
+      this.mayIContainer.add(cancelBtn);
+    }
+
     this.gameState!.players.forEach((player, index) => {
       const isCurrentVoter = activeRequest.voters.findIndex(v => v.id === player.id) === activeRequest.nextVoterIndex;
       const hasVoted = activeRequest.responses?.some(r => r.player.id === player.id);

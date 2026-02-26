@@ -272,6 +272,10 @@ export class MultiplayerGameState implements GameState {
     throw new Error('Method not implemented.');
   }
 
+  cancelMayI(player: IPlayer, request: MayIRequest): void {
+    throw new Error('Method not implemented.');
+  }
+
   async waitForNoPendingMayI(): Promise<void> {
     throw new Error('Method not implemented.');
   }

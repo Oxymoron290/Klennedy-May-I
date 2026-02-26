@@ -57,6 +57,7 @@ export interface GameState {
   discard(card: Card): void;
   mayI(player: IPlayer, card: Card): Promise<boolean>;
   respondToMayI(player: IPlayer, request: MayIRequest, allow: boolean): void
+  cancelMayI(player: IPlayer, request: MayIRequest): void;
   waitForNoPendingMayI(): Promise<void>;
   submitMelds(melds: Meld[]): boolean;
   addToMeld(meld: Meld, cards: Card[]): boolean;

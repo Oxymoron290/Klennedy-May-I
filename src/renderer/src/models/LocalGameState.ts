@@ -23,6 +23,10 @@ export class LocalGameState implements GameState {
   private stockDepletionCount: number = 0;
   // Players who picked out of turn via May I — cannot play cards until their next regular turn
   private mayIPickedThisCycle: Set<string> = new Set();
+  // Track expected hand size per player (11 base + 2 per May I won)
+  private expectedHandSizes: Map<string, number> = new Map();
+  // Configurable timeout for May I requests (ms)
+  private mayITimeoutMs: number = 15000;
 
   private onGameStartCallbacks: Array<() => void> = [];
   private onGameEndCallbacks: Array<() => void> = [];
@@ -299,6 +303,9 @@ export class LocalGameState implements GameState {
   }
 
   private dealCards() {
+    // Re-deal rules (GameRules.md) apply to physical card errors:
+    // exposed cards during dealing, face-up cards in pack, incorrect deal count.
+    // In this digital implementation, these conditions cannot occur.
     for (const player of this.players) {
       player.hand = this.drawPile.splice(0, 11);
     }
@@ -318,6 +325,9 @@ export class LocalGameState implements GameState {
     this.roundMelds = [];
     this.stockDepletionCount = 0;
     this.mayIPickedThisCycle.clear();
+    // Initialize expected hand sizes for all players
+    this.expectedHandSizes.clear();
+    this.players.forEach(p => this.expectedHandSizes.set(p.id, 11));
     this.initializeDeck();
     this.dealCards();
     this.roundStart();
@@ -327,7 +337,14 @@ export class LocalGameState implements GameState {
   private endRound() {
     // Tally everyone's scores, reset hands, redeal, etc.
     this.players.forEach(player => {
-      player.scores[this.currentRound] = player.getHandSummary().grandTotal;
+      let score = player.getHandSummary().grandTotal;
+      // Incorrect hand count penalty: too few cards = 10 pts per missing card (GameRules.md)
+      const expected = this.expectedHandSizes.get(player.id) ?? 11;
+      if (player.hand.length > 0 && player.hand.length < expected) {
+        const missingCards = expected - player.hand.length;
+        score += missingCards * 10;
+      }
+      player.scores[this.currentRound] = score;
       player.hand = [];
     });
 
@@ -373,6 +390,14 @@ export class LocalGameState implements GameState {
     // Player who picked out of turn cannot play cards until their next regular turn
     if (this.mayIPickedThisCycle.has(currentPlayer.id)) {
       console.log("Cannot play cards this turn — picked out of turn via May I.");
+      return false;
+    }
+
+    // A player may not lay down cards when their hand count is incorrect (GameRules.md)
+    const expectedSize = this.expectedHandSizes.get(currentPlayer.id) ?? 11;
+    if (currentPlayer.hand.length !== expectedSize && currentPlayer.hand.length !== expectedSize + 1) {
+      // hand.length should be expected+1 (after drawing) during a normal turn
+      console.log("Cannot lay down cards — hand count is incorrect.");
       return false;
     }
 
@@ -431,6 +456,8 @@ export class LocalGameState implements GameState {
       }
 
       // validate meld structure
+      // Cards laid down illegally (GameRules.md): in this digital implementation,
+      // meld validation occurs before acceptance, preventing illegal melds.
       if (!validateMeld(meld, true)) {
         console.log("Invalid meld:", meld);
         return false;
@@ -542,13 +569,32 @@ export class LocalGameState implements GameState {
       this.discardPile = [];
       return this.drawCard();
     }
+    // Illegal draw rules (exposed cards on stock pile) are physical-card rules
+    // that cannot occur in this digital implementation.
     if (this.drawnThisTurn) {
       console.log('Already drawn this turn');
       return null;
     }
+
+    const currentPlayer = this.getCurrentPlayer();
+    const expected = this.expectedHandSizes.get(currentPlayer?.id ?? '') ?? 11;
+
+    // Too many cards: discard without drawing (GameRules.md)
+    if (currentPlayer && currentPlayer.hand.length > expected) {
+      console.log('Player has too many cards — must discard without drawing.');
+      this.drawnThisTurn = true;
+      return null;
+    }
+
     const card = this.drawPile.pop()!;
     this.cardOnTable = card;
     this.drawnThisTurn = true;
+
+    // Too few cards: draw without discarding until hand is restored (GameRules.md)
+    if (currentPlayer && currentPlayer.hand.length < expected) {
+      this.discardedThisTurn = true;
+    }
+
     if(!this.isPlayerTurn()) {
       this.opponentDraw(this.getCurrentPlayer()!);
     }
@@ -671,6 +717,19 @@ export class LocalGameState implements GameState {
     this.mayIRequests.push(request);
     this.mayIRequest(request);
 
+    // Auto-timeout for May I requests
+    setTimeout(() => {
+      if (!request.resolved) {
+        console.log(`May I request timed out for ${player.name}`);
+        while (!request.resolved && request.nextVoterIndex < request.voters.length) {
+          const nextVoter = request.voters[request.nextVoterIndex];
+          if (nextVoter) {
+            this.respondToMayI(nextVoter, request, false);
+          }
+        }
+      }
+    }, this.mayITimeoutMs);
+
     // If nobody can vote, requester automatically wins
     if (request.voters.length === 0) {
       request.resolved = true;
@@ -748,6 +807,12 @@ export class LocalGameState implements GameState {
     // Winner takes requested card
     req.winner!.hand.push(req.card);
 
+    // Update expected hand size: +2 for May I card + penalty card
+    this.expectedHandSizes.set(
+      req.winner!.id,
+      (this.expectedHandSizes.get(req.winner!.id) ?? 11) + 2
+    );
+
     // Winner picked out of turn — cannot play cards until their next regular turn
     this.mayIPickedThisCycle.add(req.winner!.id);
 
@@ -779,6 +844,27 @@ export class LocalGameState implements GameState {
     if (pending.length === 0) return;
 
     await Promise.all(pending.map(r => r.promise));
+  }
+
+  cancelMayI(player: IPlayer, request: MayIRequest): void {
+    if (request.player.id !== player.id) {
+      console.log('Only the requester can cancel a May I request.');
+      return;
+    }
+    if (request.resolved) {
+      console.log('Cannot cancel a resolved May I request.');
+      return;
+    }
+
+    request.resolved = true;
+    request.winner = null;
+    if (request.resolve) {
+      request.resolve(false);
+    }
+
+    for (const cb of this.onMayIResolvedCallbacks) {
+      cb(request, false);
+    }
   }
 
   discardCardOnTable(): void {
